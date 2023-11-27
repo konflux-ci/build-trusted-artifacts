@@ -1,0 +1,46 @@
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../build-definitions/task/git-clone/0.1/git-clone.yaml
+  - ../../build-definitions/task/buildah/0.1/buildah.yaml
+
+patches:
+  - target:
+      kind: Task
+      name: git-clone
+    patch: |-
+      ---
+      - op: add
+        path: /spec/results/-
+        value:
+          name: ARTIFACT
+          type: array
+          description: Produced trusted artifact
+      - op: add
+        path: /spec/steps/-
+        value:
+          name: create-trusted-artifact
+          image: ${repository}/build-trusted-artifacts
+          args:
+            - create
+            - $(context.taskRun.name)=$(workspaces.output.path)/$(params.subdirectory)
+  - target:
+      kind: Task
+      name: buildah
+    patch: |-
+      ---
+      - op: add
+        path: /spec/params/-
+        value:
+          name: ARTIFACTS
+          type: array
+      - op: add
+        path: /spec/steps/0
+        value:
+          name: use-trusted-artifact
+          image: ${repository}/build-trusted-artifacts
+          args:
+            - use
+            - $(params.ARTIFACTS[*])
