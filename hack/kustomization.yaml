@@ -3,8 +3,8 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
-  - ../../build-definitions/task/git-clone/0.1/git-clone.yaml
-  - ../../build-definitions/task/buildah/0.1/buildah.yaml
+  - https://raw.githubusercontent.com/redhat-appstudio/build-definitions/main/task/git-clone/0.1/git-clone.yaml
+  - https://raw.githubusercontent.com/redhat-appstudio/build-definitions/main/task/buildah/0.1/buildah.yaml
 
 patches:
   - target:
@@ -15,7 +15,7 @@ patches:
       - op: add
         path: /spec/results/-
         value:
-          name: ARTIFACT
+          name: ARTIFACTS
           type: array
           description: Produced trusted artifact
       - op: add
@@ -34,7 +34,7 @@ patches:
       - op: add
         path: /spec/params/-
         value:
-          name: ARTIFACTS
+          name: ARTIFACTSS
           type: array
       - op: add
         path: /spec/steps/0
@@ -43,4 +43,4 @@ patches:
           image: ${repository}/build-trusted-artifacts
           args:
             - use
-            - $(params.ARTIFACTS[*])
+            - $(params.ARTIFACTSS[*])

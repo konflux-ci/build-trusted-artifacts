@@ -98,9 +98,9 @@ spec:
           value: ${repository}/golden
         - name: DOCKERFILE
           value: Containerfile
-        - name: ARTIFACTS
+        - name: ARTIFACTSS
           value:
-            - \$(tasks.clone.results.ARTIFACT[0])=\$(workspaces.source.path)/source
+            - \$(tasks.clone.results.ARTIFACTS[0])=\$(workspaces.source.path)/source
       taskRef:
         name: buildah
       workspaces:
@@ -110,4 +110,4 @@ spec:
     - name: workspace
 " | kubectl apply -f -
 
-tkn pipeline start demo --pipeline-timeout 3m --showlog --workspace name=workspace,claimName=storage-pvc
+tkn pipeline start demo --pipeline-timeout 5m --showlog --workspace name=workspace,claimName=storage-pvc

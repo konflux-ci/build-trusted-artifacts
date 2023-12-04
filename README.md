@@ -3,42 +3,60 @@
 A trusted artifact a way to pass files between two Tekton Tasks without those
 files being clandestinely modified. This is done by tracking the digest of
 archived files.
-A Tekton Task creating a trusted artifact for later use needs to add a step
-like:
+A Tekton Task creating a trusted artifact for later use needs to add a result
+named "ARTIFACTS" and step, for example:
 
 ```yaml
-- name: create-trusted-artifact
-    image: (image built from this repository)
-    args:
+spec:
+  results:
+    - name: ARTIFACTS
+      type: array
+      description: Produced trusted artifact
+  steps:
+    - name: create-trusted-artifact
+      image: (image built from this repository)
+      args:
         - create
-        - <name>=<directory/file>
+        - <name1>=<directory1/file1>
+        - <name2>=<directory2/file2>
 ```
-
-For name, it is convinient to use the TaskRun name: `$(context.taskRun.name)`.
 
 Example:
 ```yaml
-- name: create-trusted-artifact
-    image: (image built from this repository)
-    args:
+spec:
+  results:
+    - name: ARTIFACTS
+      type: array
+      description: Produced trusted artifact
+  steps:
+    - name: git-clone
+    - name: create-trusted-artifact
+      image: (image built from this repository)
+      args:
         - create
-        - source=/workspace/source
+        - source=${workspaces.source.path}
 ```
+
+For name of an artifact, it is convinient to use the TaskRun name:
+`$(context.taskRun.name)`, especially if the task produces a single artifact.
 
 More than one trusted artifact can be created from that single step by appending
 to the `args` list.
 
-The `create` operation (as used above), will generate a result, an array
-containing an entry for each of the artifacts created in specified order. The
-value of the result entry is used to restore the artifact with the `use`
-operation. For example, by adding a step:
+The `create` operation (as used above), will generate a result named
+`ARTIFACTS`, an array containing an entry for each of the artifacts created in
+specified order. The value of the result entry is used to restore the artifact
+with the `use` operation. For example, by adding a step:
 
 ```yaml
-- name: use-trusted-artifact
-    image: (image built from this repository)
-    args:
+spec:
+  steps:
+    - name: use-trusted-artifact
+      image: (image built from this repository)
+      args:
         - use
-        - <result entry>=<destination>
+        - <result entry1>=<destination1>
+        - <result entry2>=<destination2>
 ```
 
 Since the resulting entry cannot be, in vast majority of cases, predetermined,
@@ -51,10 +69,10 @@ Example:
     image: (image built from this repository)
     args:
         - use
-        - $(tasks.clone.results.ARTIFACT[0])=$(workspaces.source.path)/src
+        - $(tasks.clone.results.ARTIFACTS[0])=$(workspaces.source.path)/src
 ```
 
-In that example the first entry of the resulting `ARTIFACT` array of the `clone`
+In that example the first entry of the resulting `ARTIFACTS` array of the `clone`
 task is restored to the `source` workspace to the subdirectory `src`.
 
 # Running the demo

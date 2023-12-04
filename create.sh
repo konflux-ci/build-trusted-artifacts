@@ -7,7 +7,7 @@ set -o pipefail
 # contains name=path artifact pairs
 artifact_pairs=()
 
-result_path=/tekton/results/ARTIFACT
+result_path=/tekton/results/ARTIFACTS
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -48,9 +48,10 @@ for artifact_pair in "${artifact_pairs[@]}"; do
     fi
 
     sha256sum_output="$(sha256sum "${archive}")"
-    results+=("file:${name}@sha256:${sha256sum_output/ */}")
+    digest="${sha256sum_output/ */}"
+    results+=("file:${name}@sha256:${digest}")
 
-    echo Created artifact "${name}" from "${dir}"
+    echo Created artifact "${name}" from "${dir} (sha256:${digest})"
 done
 
 printf -v r '"%s",' "${results[@]}"

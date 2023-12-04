@@ -60,13 +60,14 @@ if [ -z "${store}" ]; then
     for w in "${workspaces[@]}"; do
         if [ -d "${w}" ]; then
             store="${w}"
+            echo "Using ${store} for artifact storage, provide --store <path> to customize"
             break
         fi
     done
 fi
 
 if [ ! -d "${store}" ]; then
-    echo "Unable to use artifact store: ${store}"
+    echo "Unable to use artifact store: ${store}, the provided path is either missing or not a directory"
     exit 1
 fi
 

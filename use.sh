@@ -69,5 +69,5 @@ for artifact_pair in "${artifact_pairs[@]}"; do
 
     tar -xpf "${archive}" -C "${destination}"
 
-    echo Restored artifact "${name}" to "${destination}"
+    echo Restored artifact "${name}" to "${destination} (${digest_algorithm}:${digest})"
 done
