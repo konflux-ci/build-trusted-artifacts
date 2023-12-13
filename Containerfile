@@ -7,7 +7,8 @@ LABEL \
   io.k8s.display-name="RHTAP Trusted Artifacts implementation" \
   io.openshift.tags="rhtap build build-trusted-artifacts trusted-application-pipeline tekton pipeline security"
 
-RUN microdnf install --assumeyes --nodocs --setopt=keepcache=0 tar gzip
+RUN microdnf update --assumeyes --nodocs --setopt=keepcache=0 && \
+    microdnf install --assumeyes --nodocs --setopt=keepcache=0 tar gzip
 
 COPY create.sh /usr/local/bin/create-archive
 COPY use.sh /usr/local/bin/use-archive
