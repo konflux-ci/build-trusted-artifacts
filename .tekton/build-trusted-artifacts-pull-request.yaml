@@ -1,0 +1,51 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  annotations:
+    build.appstudio.openshift.io/repo: https://github.com/redhat-appstudio/build-trusted-artifacts?rev={{revision}}
+    build.appstudio.redhat.com/commit_sha: '{{revision}}'
+    build.appstudio.redhat.com/pull_request_number: '{{pull_request_number}}'
+    build.appstudio.redhat.com/target_branch: '{{target_branch}}'
+    pipelinesascode.tekton.dev/max-keep-runs: "3"
+    pipelinesascode.tekton.dev/on-cel-expression: event == "pull_request" && target_branch == "main"
+  labels:
+    appstudio.openshift.io/application: build-trusted-artifacts
+    appstudio.openshift.io/component: build-trusted-artifacts
+    pipelines.appstudio.openshift.io/type: build
+  name: build-trusted-artifacts-on-pull-request
+  namespace: rhtap-build-tenant
+spec:
+  params:
+    - name: dockerfile
+      value: Containerfile
+    - name: git-url
+      value: '{{repo_url}}'
+    - name: image-expires-after
+      value: 5d
+    - name: output-image
+      value: quay.io/redhat-user-workloads/rhtap-build-tenant/build-trusted-artifacts/build-trusted-artifacts:on-pr-{{revision}}
+    - name: path-context
+      value: .
+    - name: revision
+      value: '{{revision}}'
+  pipelineRef:
+    params:
+      - name: bundle
+        value: quay.io/redhat-appstudio-tekton-catalog/pipeline-docker-build@sha256:54bea9b82ce1e91a4b6eb22b31d90bef8f80673276016a6540de2f56d119f24a
+      - name: name
+        value: docker-build
+      - name: kind
+        value: pipeline
+    resolver: bundles
+  workspaces:
+    - name: workspace
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Gi
+    - name: git-auth
+      secret:
+        secretName: '{{ git_auth_secret }}'
