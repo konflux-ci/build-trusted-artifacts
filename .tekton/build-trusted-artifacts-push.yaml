@@ -25,6 +25,8 @@ spec:
       value: .
     - name: revision
       value: '{{revision}}'
+    - name: build-source-image
+      value: true
   pipelineRef:
     params:
       - name: bundle
