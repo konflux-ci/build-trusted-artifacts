@@ -32,6 +32,11 @@ for artifact_pair in "${artifact_pairs[@]}"; do
     uri="${artifact_pair/=*}"
     destination="${artifact_pair/*=}"
 
+    if [ "$(realpath "${destination}")" == "/" ]; then
+      echo Not a valid destination: "${destination}", resolves to /
+      exit 1
+    fi
+
     type="${uri/:*}"
 
     if [ "${type}" != "file" ]; then
