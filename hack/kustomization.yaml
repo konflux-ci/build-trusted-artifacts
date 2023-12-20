@@ -15,8 +15,8 @@ patches:
       - op: add
         path: /spec/results/-
         value:
-          name: ARTIFACTS
-          type: array
+          name: SOURCE_ARTIFACT
+          type: string
           description: Produced trusted artifact
       - op: add
         path: /spec/steps/-
@@ -25,7 +25,7 @@ patches:
           image: ${repository}/build-trusted-artifacts
           args:
             - create
-            - $(context.taskRun.name)=$(workspaces.output.path)/$(params.subdirectory)
+            - $(results.SOURCE_ARTIFACT.path)=$(workspaces.output.path)/$(params.subdirectory)
   - target:
       kind: Task
       name: buildah
@@ -34,8 +34,8 @@ patches:
       - op: add
         path: /spec/params/-
         value:
-          name: ARTIFACTSS
-          type: array
+          name: SOURCE_ARTIFACT
+          type: string
       - op: add
         path: /spec/steps/0
         value:
@@ -43,4 +43,4 @@ patches:
           image: ${repository}/build-trusted-artifacts
           args:
             - use
-            - $(params.ARTIFACTSS[*])
+            - $(params.SOURCE_ARTIFACT)
