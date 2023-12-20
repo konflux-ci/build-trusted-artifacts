@@ -66,8 +66,11 @@ for artifact_pair in "${artifact_pairs[@]}"; do
 
     echo "${digest} ${archive}" | "${digest_algorithm}sum" --check --quiet --strict
 
-    if [ -e "${destination}" ]; then
-        rm -rf "${destination}"
+    if [ -d "${destination}" ]; then
+        (
+            shopt -s dotglob
+            rm -rf "${destination:?}"/*
+        )
     fi
 
     mkdir -p "${destination}"
