@@ -43,4 +43,4 @@ patches:
           image: ${repository}/build-trusted-artifacts
           args:
             - use
-            - $(params.SOURCE_ARTIFACT)
+            - $(params.SOURCE_ARTIFACT)=$(workspaces.source.path)/source
