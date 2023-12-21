@@ -6,7 +6,6 @@ set -o pipefail
 
 supported_digest_algorithms=(sha256 sha384 sha512)
 
-
 # contains name=path artifact pairs
 artifact_pairs=()
 
@@ -44,8 +43,9 @@ for artifact_pair in "${artifact_pairs[@]}"; do
         exit 1
     fi
 
+
     name="${uri#*:}"
-    name="${name/@*}"
+    name="${name/:*}"
 
     archive="${store}/${name}".tar.gz
 
@@ -54,15 +54,15 @@ for artifact_pair in "${artifact_pairs[@]}"; do
         exit 1
     fi
 
-    digest_algorithm=${uri#*@}
-    digest_algorithm=${digest_algorithm%:*}
+    digest_algorithm=${uri/-*}
+    digest_algorithm=${digest_algorithm/*:}
     supported=0
     case "${supported_digest_algorithms[@]}" in *"${digest_algorithm}"*) supported=1 ;; esac
     if [ $supported -eq 0 ]; then
         echo "Unsupported digest algorthm: ${digest_algorithm}"
         exit 1
     fi
-    digest="${uri/*:}"
+    digest="${uri/*-}"
 
     echo "${digest} ${archive}" | "${digest_algorithm}sum" --check --quiet --strict
 
@@ -77,5 +77,5 @@ for artifact_pair in "${artifact_pairs[@]}"; do
 
     tar -xpf "${archive}" -C "${destination}"
 
-    echo Restored artifact "${name}" to "${destination} (${digest_algorithm}:${digest})"
+    echo Restored artifact to "${destination} (${digest_algorithm}:${digest})"
 done

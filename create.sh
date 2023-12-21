@@ -4,10 +4,8 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-# contains name=path artifact pairs
+# contains {result path}={artifact source path} pairs
 artifact_pairs=()
-
-result_path=/tekton/results/ARTIFACTS
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -32,12 +30,11 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-results=()
 for artifact_pair in "${artifact_pairs[@]}"; do
-    name="${artifact_pair/=*}"
+    result_path="${artifact_pair/=*}"
     dir="${artifact_pair/*=}"
 
-    archive="${store}/${name}".tar.gz
+    archive="$(mktemp -p "${store}").tar.gz"
 
     if [ -d "${dir}" ]; then
         # archive the whole directory
@@ -49,11 +46,9 @@ for artifact_pair in "${artifact_pairs[@]}"; do
 
     sha256sum_output="$(sha256sum "${archive}")"
     digest="${sha256sum_output/ */}"
-    results+=("file:${name}@sha256:${digest}")
+    artifact="${store}/sha256-${digest}.tar.gz"
+    mv "${archive}" "${artifact}"
+    echo -n "file:sha256-${digest}" > "${result_path}"
 
-    echo Created artifact "${name}" from "${dir} (sha256:${digest})"
+    echo Created artifact from "${dir} (sha256:${digest})"
 done
-
-printf -v r '"%s",' "${results[@]}"
-
-echo "[${r%,}]" > "${result_path}"

@@ -98,9 +98,8 @@ spec:
           value: ${repository}/golden
         - name: DOCKERFILE
           value: Containerfile
-        - name: ARTIFACTSS
-          value:
-            - \$(tasks.clone.results.ARTIFACTS[0])=\$(workspaces.source.path)/source
+        - name: SOURCE_ARTIFACT
+          value: \$(tasks.clone.results.SOURCE_ARTIFACT)=\$(workspaces.source.path)/source
       taskRef:
         name: buildah
       workspaces:
