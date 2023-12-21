@@ -31,6 +31,16 @@ for artifact_pair in "${artifact_pairs[@]}"; do
     uri="${artifact_pair/=*}"
     destination="${artifact_pair/*=}"
 
+    if [ -z "${uri}" ]; then
+        echo WARN: artifact URI not provided, "(given: ${artifact_pair})"
+        continue
+    fi
+
+    if [ -z "${destination}" ]; then
+        echo WARN: destination not provided, "(given: ${artifact_pair})"
+        continue
+    fi
+
     if [ "$(realpath "${destination}")" == "/" ]; then
       echo Not a valid destination: "${destination}", resolves to /
       exit 1
