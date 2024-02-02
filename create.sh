@@ -34,7 +34,7 @@ for artifact_pair in "${artifact_pairs[@]}"; do
     result_path="${artifact_pair/=*}"
     dir="${artifact_pair/*=}"
 
-    archive="$(mktemp -p "${store}").tar.gz"
+    archive="$(mktemp).tar.gz"
 
     if [ -d "${dir}" ]; then
         # archive the whole directory
