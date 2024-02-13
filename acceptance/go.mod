@@ -3,7 +3,7 @@ module github.com/enterprise-contract/build-trusted-artifacts/acceptance
 go 1.21.6
 
 require (
-	github.com/cucumber/godog v0.13.0
+	github.com/cucumber/godog v0.14.0
 	github.com/docker/docker v25.0.2+incompatible
 	github.com/google/go-cmp v0.6.0
 	github.com/opencontainers/image-spec v1.1.0-rc2.0.20221005185240-3a7f492d3f1b
