@@ -32,16 +32,19 @@ done
 
 for artifact_pair in "${artifact_pairs[@]}"; do
     result_path="${artifact_pair/=*}"
-    dir="${artifact_pair/*=}"
+    path="${artifact_pair/*=}"
 
     archive="$(mktemp).tar.gz"
 
-    if [ -d "${dir}" ]; then
-        # archive the whole directory
-        tar -czf "${archive}" -C "${dir}" .
+    if [ ! -r "${path}" ]; then
+        # non-existent paths result in empty archives
+        tar -czf "${archive}" --files-from /dev/null
+    elif [ -d "${path}" ]; then
+        # archive the whole pathectory
+        tar -czf "${archive}" -C "${path}" .
     else
         # archive a single file
-        tar -czf "${archive}" -C "${dir%/*}" "${dir##*/}"
+        tar -czf "${archive}" -C "${path%/*}" "${path##*/}"
     fi
 
     sha256sum_output="$(sha256sum "${archive}")"
@@ -50,5 +53,5 @@ for artifact_pair in "${artifact_pairs[@]}"; do
     mv "${archive}" "${artifact}"
     echo -n "file:sha256-${digest}" > "${result_path}"
 
-    echo Created artifact from "${dir} (sha256:${digest})"
+    echo Created artifact from "${path} (sha256:${digest})"
 done

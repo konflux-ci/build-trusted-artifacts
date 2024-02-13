@@ -10,3 +10,7 @@ Feature: Artifacts
         When artifact is created for file "foobar.json"
         And artifact is extracted for file "foobar.json"
         Then the restored file "foobar.json" should match its source
+
+    Scenario: Non-existant paths create empty archives
+        When artifact is created for file "nonexistant"
+        Then the created archive is empty

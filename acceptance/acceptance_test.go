@@ -12,6 +12,8 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
+const emptyFilePath = "sha256-85cea451eec057fa7e734548ca3ba6d779ed5836a3f9de14b8394575ef0d7d8e.tar.gz"
+
 func TestFeatures(t *testing.T) {
 	suite := godog.TestSuite{
 		ScenarioInitializer:  initializeScenario,
@@ -36,6 +38,7 @@ func initializeScenario(sc *godog.ScenarioContext) {
 	sc.Step(`^artifact is created for file "([^"]*)"$`, createArtifactForFile)
 	sc.Step(`^artifact is extracted for file "([^"]*)"$`, useArtifactForFile)
 	sc.Step(`^the restored file "([^"]*)" should match its source$`, restoredFileShouldMatchSource)
+	sc.Step(`^the created archive is empty$`, createdArchiveIsEmpty)
 }
 
 func initializeTestSuite(suite *godog.TestSuiteContext) {
@@ -173,6 +176,19 @@ func restoredFileShouldMatchSource(ctx context.Context, fname string) (context.C
 	if !cmp.Equal(sourceContent, restoredContent) {
 		return ctx, fmt.Errorf("source file does not match restored file: \n%s",
 			cmp.Diff(sourceContent, restoredContent, toStringList))
+	}
+
+	return ctx, nil
+}
+
+func createdArchiveIsEmpty(ctx context.Context) (context.Context, error) {
+	ts, err := getTestState(ctx)
+	if err != nil {
+		return ctx, fmt.Errorf("no test state: %w", err)
+	}
+
+	if _, err := os.Stat(filepath.Join(ts.artifactsDir(), emptyFilePath)); err != nil {
+		return ctx, fmt.Errorf("the empty archive is not present: %v", err)
 	}
 
 	return ctx, nil
