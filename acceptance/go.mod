@@ -1,6 +1,6 @@
 module github.com/enterprise-contract/build-trusted-artifacts/acceptance
 
-go 1.21.6
+go 1.22.0
 
 require (
 	github.com/cucumber/godog v0.14.0
