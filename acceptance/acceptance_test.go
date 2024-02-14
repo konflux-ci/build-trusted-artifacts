@@ -21,6 +21,7 @@ func TestFeatures(t *testing.T) {
 		Options: &godog.Options{
 			Format:   "pretty",
 			Paths:    []string{"features"},
+			Strict:   true,
 			TestingT: t,
 		},
 	}
@@ -35,10 +36,12 @@ func initializeScenario(sc *godog.ScenarioContext) {
 	sc.After(teardownScenario)
 
 	sc.Step(`^a source file "([^"]*)":$`, createSourceFile)
-	sc.Step(`^artifact is created for file "([^"]*)"$`, createArtifactForFile)
-	sc.Step(`^artifact is extracted for file "([^"]*)"$`, useArtifactForFile)
+	sc.Step(`^artifact "([^"]*)" is created for (?:file|path) "([^"]*)"$`, createArtifact)
+	sc.Step(`^artifact "([^"]*)" is extracted for file "([^"]*)"$`, useArtifactForFile)
 	sc.Step(`^the restored file "([^"]*)" should match its source$`, restoredFileShouldMatchSource)
 	sc.Step(`^the created archive is empty$`, createdArchiveIsEmpty)
+	sc.Step(`^files:$`, createFiles)
+	sc.Step(`^artifact "([^"]*)" contains:$`, artifactContains)
 }
 
 func initializeTestSuite(suite *godog.TestSuiteContext) {
@@ -81,16 +84,16 @@ func createSourceFile(ctx context.Context, fname string, content *godog.DocStrin
 	return ctx, os.WriteFile(fpath, []byte(content.Content), 0400)
 }
 
-func createArtifactForFile(ctx context.Context, fname string) (context.Context, error) {
+func createArtifact(ctx context.Context, result string, path string) (context.Context, error) {
 	ts, err := getTestState(ctx)
 	if err != nil {
-		return ctx, fmt.Errorf("createArtifactForFile get test state: %w", err)
+		return ctx, fmt.Errorf("createArtifact get test state: %w", err)
 	}
 
 	// Set up the file paths as they will be seen within the container.
 	mountedTS := ts.forMount("/data")
-	sourceFile := filepath.Join(mountedTS.sourceDir(), fname)
-	resultFile := filepath.Join(mountedTS.resultsDir(), fname)
+	sourceFile := filepath.Join(mountedTS.sourceDir(), path)
+	resultFile := filepath.Join(mountedTS.resultsDir(), result)
 	storePath := mountedTS.artifactsDir()
 
 	binds := []string{
@@ -113,13 +116,13 @@ func createArtifactForFile(ctx context.Context, fname string) (context.Context, 
 	return ctx, nil
 }
 
-func useArtifactForFile(ctx context.Context, fname string) (context.Context, error) {
+func useArtifactForFile(ctx context.Context, result, path string) (context.Context, error) {
 	ts, err := getTestState(ctx)
 	if err != nil {
 		return ctx, fmt.Errorf("useArtifactForFile get test state: %w", err)
 	}
 
-	resultInfo, err := os.ReadFile(filepath.Join(ts.resultsDir(), fname))
+	resultInfo, err := os.ReadFile(filepath.Join(ts.resultsDir(), result))
 	if err != nil {
 		return ctx, fmt.Errorf("reading result file: %w", err)
 	}
@@ -184,11 +187,95 @@ func restoredFileShouldMatchSource(ctx context.Context, fname string) (context.C
 func createdArchiveIsEmpty(ctx context.Context) (context.Context, error) {
 	ts, err := getTestState(ctx)
 	if err != nil {
-		return ctx, fmt.Errorf("no test state: %w", err)
+		return ctx, fmt.Errorf("createdArchiveIsEmpty no test state: %w", err)
 	}
 
 	if _, err := os.Stat(filepath.Join(ts.artifactsDir(), emptyFilePath)); err != nil {
 		return ctx, fmt.Errorf("the empty archive is not present: %v", err)
+	}
+
+	return ctx, nil
+}
+
+func createFiles(ctx context.Context, files *godog.Table) (context.Context, error) {
+	if files == nil {
+		return ctx, nil
+	}
+	ts, err := getTestState(ctx)
+	if err != nil {
+		return ctx, fmt.Errorf("createFiles no test state: %w", err)
+	}
+
+	sourceDir := ts.sourceDir()
+
+	for _, row := range files.Rows[1:] {
+		path := row.Cells[0].Value
+		content := row.Cells[1].Value
+
+		fpath := filepath.Join(sourceDir, path)
+
+		if err := os.MkdirAll(filepath.Dir(fpath), 0700); err != nil {
+			return ctx, err
+		}
+
+		if err := os.WriteFile(fpath, []byte(content), 0400); err != nil {
+			return ctx, err
+		}
+	}
+
+	return ctx, nil
+}
+
+func artifactContains(ctx context.Context, result string, files *godog.Table) (context.Context, error) {
+	ts, err := getTestState(ctx)
+	if err != nil {
+		return ctx, fmt.Errorf("artifactContains no test state: %w", err)
+	}
+
+	archiveUri, err := os.ReadFile(filepath.Join(ts.resultsDir(), result))
+	if err != nil {
+		return ctx, fmt.Errorf("reading result file: %w", err)
+	}
+
+	// Set up the file paths as they will be seen within the container.
+	mountedTS := ts.forMount("/data")
+	storePath := mountedTS.artifactsDir()
+	restoredPath := mountedTS.restoredDir()
+
+	binds := []string{
+		// TODO: The ":Z" option is required on Linux systems because of to selinux. This might not
+		// work on a mac, for example.
+		fmt.Sprintf("%s:%s:Z", ts.contextDir, mountedTS.contextDir),
+	}
+
+	cmd := []string{
+		"use",
+		"--store",
+		storePath,
+		fmt.Sprintf("%s=%s", archiveUri, restoredPath),
+	}
+
+	if err := runContainer(ctx, cmd, binds); err != nil {
+		return ctx, fmt.Errorf("using artifact: %w", err)
+	}
+
+	restoredDir := ts.restoredDir()
+
+	for _, row := range files.Rows[1:] {
+		path := row.Cells[0].Value
+		expected := row.Cells[1].Value
+
+		fpath := filepath.Join(restoredDir, path)
+
+		bytes, err := os.ReadFile(fpath)
+		if err != nil {
+			return ctx, err
+		}
+
+		got := string(bytes)
+		if !cmp.Equal(expected, got) {
+			return ctx, fmt.Errorf("file %q does not match restored file: \n%s", path, cmp.Diff(expected, got))
+		}
 	}
 
 	return ctx, nil
