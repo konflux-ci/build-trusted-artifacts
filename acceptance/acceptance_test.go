@@ -42,6 +42,9 @@ func initializeScenario(sc *godog.ScenarioContext) {
 	sc.Step(`^the created archive is empty$`, createdArchiveIsEmpty)
 	sc.Step(`^files:$`, createFiles)
 	sc.Step(`^artifact "([^"]*)" contains:$`, artifactContains)
+	sc.Step(`^artifact "([^"]*)" is used$`, artifactIsUsed)
+	sc.Step(`^running in debug mode$`, runningInDebugMode)
+	sc.Step(`^the logs contain words: "([^"]*)"$`, theLogsContainWords)
 }
 
 func initializeTestSuite(suite *godog.TestSuiteContext) {
@@ -109,7 +112,7 @@ func createArtifact(ctx context.Context, result string, path string) (context.Co
 		fmt.Sprintf("%s=%s", resultFile, sourceFile),
 	}
 
-	if err := runContainer(ctx, cmd, binds); err != nil {
+	if ctx, err = runContainer(ctx, cmd, binds); err != nil {
 		return ctx, fmt.Errorf("creating artifact: %w", err)
 	}
 
@@ -145,7 +148,7 @@ func useArtifactForFile(ctx context.Context, result, path string) (context.Conte
 		fmt.Sprintf("%s=%s", resultInfo, restoredPath),
 	}
 
-	if err := runContainer(ctx, cmd, binds); err != nil {
+	if ctx, err = runContainer(ctx, cmd, binds); err != nil {
 		return ctx, fmt.Errorf("creating artifact: %w", err)
 	}
 
@@ -255,7 +258,7 @@ func artifactContains(ctx context.Context, result string, files *godog.Table) (c
 		fmt.Sprintf("%s=%s", archiveUri, restoredPath),
 	}
 
-	if err := runContainer(ctx, cmd, binds); err != nil {
+	if ctx, err = runContainer(ctx, cmd, binds); err != nil {
 		return ctx, fmt.Errorf("using artifact: %w", err)
 	}
 
@@ -275,6 +278,26 @@ func artifactContains(ctx context.Context, result string, files *godog.Table) (c
 		got := string(bytes)
 		if !cmp.Equal(expected, got) {
 			return ctx, fmt.Errorf("file %q does not match restored file: \n%s", path, cmp.Diff(expected, got))
+		}
+	}
+
+	return ctx, nil
+}
+
+func artifactIsUsed(ctx context.Context, name string) (context.Context, error) {
+	return useArtifactForFile(ctx, name, "")
+}
+
+func runningInDebugMode(ctx context.Context) (context.Context, error) {
+	return context.WithValue(ctx, environmentKey, []string{"DEBUG=1"}), nil
+}
+
+func theLogsContainWords(ctx context.Context, expected string) (context.Context, error) {
+	logs := ctx.Value(logsKey).(string)
+
+	for _, keyword := range strings.Fields(expected) {
+		if strings.Index(logs, keyword) == -1 {
+			return ctx, fmt.Errorf("logs do not contain the keyword: %q", keyword)
 		}
 	}
 

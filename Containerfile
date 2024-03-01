@@ -7,8 +7,11 @@ LABEL \
   io.k8s.display-name="RHTAP Trusted Artifacts implementation" \
   io.openshift.tags="rhtap build build-trusted-artifacts trusted-application-pipeline tekton pipeline security"
 
+COPY centos9-stream.repo /etc/yum.repos.d/centos9-stream.repo
+COPY RPM-GPG-KEY-centosofficial /etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial
+
 RUN microdnf update --assumeyes --nodocs --setopt=keepcache=0 && \
-    microdnf install --assumeyes --nodocs --setopt=keepcache=0 tar gzip
+    microdnf install --assumeyes --nodocs --setopt=keepcache=0 tar gzip sysstat time
 
 COPY create.sh /usr/local/bin/create-archive
 COPY use.sh /usr/local/bin/use-archive
