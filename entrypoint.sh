@@ -71,12 +71,20 @@ if [ ! -d "${store}" ]; then
     exit 1
 fi
 
+time_format=''
+if [[ -v DEBUG ]]; then
+    iostat -d 1 &
+    IOSTAT_PID=$!
+    trap 'kill ${IOSTAT_PID}' EXIT
+    time_format='User:\t\t%U\nSystem:\t\t%S\nElapsed:\t%E\nCPU:\t\t%P\nMax RS:\t\t%MKiB\nAVG Memory:\t%KKiB\nInputs:\t\t%I\nOutputs:\t%O\nWaits:\t\t%w\n'
+fi
+
 case "${op}" in
     "create")
-        /usr/local/bin/create-archive --store "${store}" "${cmd[@]}"
+        TIME="${time_format}" time /usr/local/bin/create-archive --store "${store}" "${cmd[@]}"
         ;;
     "use")
-        /usr/local/bin/use-archive --store "${store}" "${cmd[@]}"
+        TIME="${time_format}" time /usr/local/bin/use-archive --store "${store}" "${cmd[@]}"
         ;;
     *)
         echo "Unsupported operation: ${op}"

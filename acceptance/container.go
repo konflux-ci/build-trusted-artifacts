@@ -21,6 +21,10 @@ const containerImage = "local.build-trusted-artifacts:acceptance"
 
 const waitTimeout = 1 * time.Minute
 
+const environmentKey = "env"
+
+const logsKey = "logs"
+
 func init() {
 	var err error
 	containerClient, err = client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
@@ -29,13 +33,19 @@ func init() {
 	}
 }
 
-func runContainer(ctx context.Context, cmd []string, binds []string) error {
+func runContainer(ctx context.Context, cmd, binds []string) (context.Context, error) {
+	var env []string
+	if e, ok := ctx.Value(environmentKey).([]string); ok {
+		env = e
+	}
+
 	cont, err := containerClient.ContainerCreate(
 		ctx,
 		&container.Config{
 			Image: containerImage,
 			Tty:   true, // Prevent leading metadata characters in the container logs... weird
 			Cmd:   cmd,
+			Env:   env,
 		},
 		&container.HostConfig{
 			Binds: binds,
@@ -45,23 +55,23 @@ func runContainer(ctx context.Context, cmd []string, binds []string) error {
 		"", // Let docker pick a name.
 	)
 	if err != nil {
-		return fmt.Errorf("creating container: %w", err)
+		return ctx, fmt.Errorf("creating container: %w", err)
 	}
 
 	defer containerClient.ContainerRemove(ctx, cont.ID, container.RemoveOptions{Force: true})
 
 	if err := containerClient.ContainerStart(ctx, cont.ID, container.StartOptions{}); err != nil {
-		return fmt.Errorf("starting container %s: %w", cont.ID, err)
+		return ctx, fmt.Errorf("starting container %s: %w", cont.ID, err)
 	}
 
-	if err := waitForContainer(ctx, cont.ID); err != nil {
-		return fmt.Errorf("waiting for container %s: %w", cont.ID, err)
+	if ctx, err = waitForContainer(ctx, cont.ID); err != nil {
+		return ctx, fmt.Errorf("waiting for container %s: %w", cont.ID, err)
 	}
 
-	return nil
+	return ctx, nil
 }
 
-func waitForContainer(ctx context.Context, contID string) error {
+func waitForContainer(ctx context.Context, contID string) (context.Context, error) {
 	ctxWait, cancel := context.WithTimeout(ctx, waitTimeout)
 	defer cancel()
 
@@ -69,19 +79,21 @@ func waitForContainer(ctx context.Context, contID string) error {
 	select {
 	case wait := <-waitC:
 		if wait.Error != nil {
-			return fmt.Errorf("wait error: %s", wait.Error)
+			return ctx, fmt.Errorf("wait error: %s", wait.Error)
 		}
+		logs := getContainerLogs(ctx, contID)
+		ctx = context.WithValue(ctx, logsKey, logs)
+
 		if wait.StatusCode != 0 {
-			logs := getContainerLogs(ctx, contID)
-			return fmt.Errorf("unexpected status code %d, logs:\n%s", wait.StatusCode, logs)
+			return ctx, fmt.Errorf("unexpected status code %d, logs:\n%s", wait.StatusCode, logs)
 		}
 	case err := <-errC:
 		if err != nil {
-			return fmt.Errorf("waiting for container: %w", err)
+			return ctx, fmt.Errorf("waiting for container: %w", err)
 		}
 	}
 
-	return nil
+	return ctx, nil
 }
 
 func getContainerLogs(ctx context.Context, contID string) string {
