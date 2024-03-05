@@ -5,7 +5,9 @@ LABEL \
   io.k8s.description="RHTAP Trusted Artifacts implementation creates and restores archives of files maintaining their integrity." \
   summary="RHTAP Trusted Artifacts implementation" \
   io.k8s.display-name="RHTAP Trusted Artifacts implementation" \
-  io.openshift.tags="rhtap build build-trusted-artifacts trusted-application-pipeline tekton pipeline security"
+  io.openshift.tags="rhtap build build-trusted-artifacts trusted-application-pipeline tekton pipeline security" \
+  name="RHTAP Trusted Artifacts implementation" \
+  com.redhat.component="build-trusted-artifacts"
 
 COPY centos9-stream.repo /etc/yum.repos.d/centos9-stream.repo
 COPY RPM-GPG-KEY-centosofficial /etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial
