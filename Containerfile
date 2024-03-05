@@ -18,5 +18,6 @@ RUN microdnf update --assumeyes --nodocs --setopt=keepcache=0 && \
 COPY create.sh /usr/local/bin/create-archive
 COPY use.sh /usr/local/bin/use-archive
 COPY entrypoint.sh /usr/local/bin/entrypoint
+COPY LICENSE /licenses/LICENSE
 
 ENTRYPOINT [ "/usr/local/bin/entrypoint" ]
