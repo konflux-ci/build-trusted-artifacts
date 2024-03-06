@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os/user"
 	"path/filepath"
 	"time"
 
@@ -39,6 +40,11 @@ func runContainer(ctx context.Context, cmd, binds []string) (context.Context, er
 		env = e
 	}
 
+	user, err := user.Current()
+	if err != nil {
+		return ctx, err
+	}
+
 	cont, err := containerClient.ContainerCreate(
 		ctx,
 		&container.Config{
@@ -46,6 +52,7 @@ func runContainer(ctx context.Context, cmd, binds []string) (context.Context, er
 			Tty:   true, // Prevent leading metadata characters in the container logs... weird
 			Cmd:   cmd,
 			Env:   env,
+			User:  user.Uid,
 		},
 		&container.HostConfig{
 			Binds: binds,
