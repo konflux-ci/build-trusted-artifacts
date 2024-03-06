@@ -27,6 +27,7 @@ jobs:
       with:
         go-version-file: acceptance/go.mod
         cache: true
+        cache-dependency-path: acceptance/go.sum
 
     - name: Run checks
       run: make test
