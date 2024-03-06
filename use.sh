@@ -4,6 +4,12 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
+tar_opts=-xpf
+if [[ -v DEBUG ]]; then
+  tar_opts=-xvpf
+  set -o xtrace
+fi
+
 supported_digest_algorithms=(sha256 sha384 sha512)
 
 # contains name=path artifact pairs
@@ -29,7 +35,7 @@ done
 
 for artifact_pair in "${artifact_pairs[@]}"; do
     uri="${artifact_pair/=*}"
-    destination="${artifact_pair/*=}"
+    destination="$(realpath "${artifact_pair/*=}")"
 
     if [ -z "${uri}" ]; then
         echo WARN: artifact URI not provided, "(given: ${artifact_pair})"
@@ -41,7 +47,7 @@ for artifact_pair in "${artifact_pairs[@]}"; do
         continue
     fi
 
-    if [ "$(realpath "${destination}")" == "/" ]; then
+    if [ "${destination}" == "/" ]; then
       echo Not a valid destination: "${destination}", resolves to /
       exit 1
     fi
@@ -52,7 +58,6 @@ for artifact_pair in "${artifact_pairs[@]}"; do
         echo Unsupported archive type: "${type}"
         exit 1
     fi
-
 
     name="${uri#*:}"
     name="${name/:*}"
@@ -79,13 +84,18 @@ for artifact_pair in "${artifact_pairs[@]}"; do
     if [ -d "${destination}" ]; then
         (
             shopt -s dotglob
+            log "deleting everything in %s" "${destination}"
             rm -rf "${destination:?}"/*
         )
     fi
 
     mkdir -p "${destination}"
 
-    tar -xpf "${archive}" -C "${destination}"
+    log "destination: %s" "$(ls -lda "${destination}")"
+
+    log "expanding archive %s to %s" "${archive}" "${destination}"
+
+    tar "${tar_opts}" "${archive}" -C "${destination}"
 
     echo Restored artifact to "${destination} (${digest_algorithm}:${digest})"
 done

@@ -31,6 +31,26 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
+time_format=''
+log() {
+    :
+}
+if [[ -v DEBUG ]]; then
+    iostat -d 1 &
+    IOSTAT_PID=$!
+    trap 'kill ${IOSTAT_PID}' EXIT
+    time_format='User:\t\t%U\nSystem:\t\t%S\nElapsed:\t%E\nCPU:\t\t%P\nMax RS:\t\t%MKiB\nAVG Memory:\t%KKiB\nInputs:\t\t%I\nOutputs:\t%O\nWaits:\t\t%w\n'
+    log() {
+        # shellcheck disable=SC2059
+        printf "DEBUG: %s\n" "$(printf "${@}")"
+    }
+
+    log "running as %s" "$(id)"
+    export PS4='DEBUG $0.$LINENO: '
+    set -o xtrace
+fi
+export -f log
+
 if [[ $# -eq 0 ]]; then
     echo "Usage: $0 <create|use> [args...]"
     exit 1
@@ -69,14 +89,6 @@ fi
 if [ ! -d "${store}" ]; then
     echo "Unable to use artifact store: ${store}, the provided path is either missing or not a directory"
     exit 1
-fi
-
-time_format=''
-if [[ -v DEBUG ]]; then
-    iostat -d 1 &
-    IOSTAT_PID=$!
-    trap 'kill ${IOSTAT_PID}' EXIT
-    time_format='User:\t\t%U\nSystem:\t\t%S\nElapsed:\t%E\nCPU:\t\t%P\nMax RS:\t\t%MKiB\nAVG Memory:\t%KKiB\nInputs:\t\t%I\nOutputs:\t%O\nWaits:\t\t%w\n'
 fi
 
 case "${op}" in
