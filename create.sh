@@ -4,6 +4,12 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
+tar_opts=-czf
+if [[ -v DEBUG ]]; then
+  tar_opts=-cvzf
+  set -o xtrace
+fi
+
 # contains {result path}={artifact source path} pairs
 artifact_pairs=()
 
@@ -36,15 +42,17 @@ for artifact_pair in "${artifact_pairs[@]}"; do
 
     archive="$(mktemp).tar.gz"
 
+    log "creating tar archive %s with files from %s" "${archive}" "${path}"
+
     if [ ! -r "${path}" ]; then
         # non-existent paths result in empty archives
-        tar -czf "${archive}" --files-from /dev/null
+        tar "${tar_opts}" "${archive}" --files-from /dev/null
     elif [ -d "${path}" ]; then
-        # archive the whole pathectory
-        tar -czf "${archive}" -C "${path}" .
+        # archive the whole directory
+        tar "${tar_opts}" "${archive}" -C "${path}" .
     else
         # archive a single file
-        tar -czf "${archive}" -C "${path%/*}" "${path##*/}"
+        tar "${tar_opts}" "${archive}" -C "${path%/*}" "${path##*/}"
     fi
 
     sha256sum_output="$(sha256sum "${archive}")"
