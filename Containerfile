@@ -22,9 +22,8 @@ COPY --from=files / /
 
 RUN microdnf update --assumeyes --nodocs --setopt=keepcache=0 && \
     microdnf install --assumeyes --nodocs --setopt=keepcache=0 tar gzip sysstat time && \
-    groupadd --gid 65535 artifacts && \
-    useradd --uid 65535 --gid 65535 --shell /bin/bash trusted
+    useradd --non-unique --uid 0 --gid 0 --shell /bin/bash notroot
 
-USER trusted
+USER notroot
 
 ENTRYPOINT [ "/usr/local/bin/entrypoint" ]
