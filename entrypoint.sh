@@ -74,23 +74,6 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# The `--store`` was not provided, use first available workspace.
-if [ -z "${store}" ]; then
-    workspaces=(/workspace/*)
-    for w in "${workspaces[@]}"; do
-        if [ -d "${w}" ]; then
-            store="${w}"
-            echo "Using ${store} for artifact storage, provide --store <path> to customize"
-            break
-        fi
-    done
-fi
-
-if [ ! -d "${store}" ]; then
-    echo "Unable to use artifact store: ${store}, the provided path is either missing or not a directory"
-    exit 1
-fi
-
 case "${op}" in
     "create")
         TIME="${time_format}" time /usr/local/bin/create-archive --store "${store}" "${cmd[@]}"
