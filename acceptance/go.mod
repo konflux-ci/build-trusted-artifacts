@@ -4,7 +4,7 @@ go 1.22.2
 
 require (
 	github.com/cucumber/godog v0.14.0
-	github.com/docker/docker v26.0.0+incompatible
+	github.com/docker/docker v26.0.1+incompatible
 	github.com/google/go-cmp v0.6.0
 	github.com/opencontainers/image-spec v1.1.0
 )
