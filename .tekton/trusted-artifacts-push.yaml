@@ -2,16 +2,16 @@ apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata:
   annotations:
-    build.appstudio.openshift.io/repo: https://github.com/redhat-appstudio/build-trusted-artifacts?rev={{revision}}
+    build.appstudio.openshift.io/repo: https://github.com/konflux-ci/build-trusted-artifacts?rev={{revision}}
     build.appstudio.redhat.com/commit_sha: '{{revision}}'
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
-    pipelinesascode.tekton.dev/max-keep-runs: "3"
+    pipelinesascode.tekton.dev/max-keep-runs: '3'
     pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch == "main"
   labels:
-    appstudio.openshift.io/application: build-trusted-artifacts
-    appstudio.openshift.io/component: build-trusted-artifacts
+    appstudio.openshift.io/application: trusted-artifacts
+    appstudio.openshift.io/component: trusted-artifacts
     pipelines.appstudio.openshift.io/type: build
-  name: build-trusted-artifacts-on-push
+  name: trusted-artifacts-on-push
   namespace: rhtap-build-tenant
 spec:
   params:
@@ -20,7 +20,7 @@ spec:
     - name: git-url
       value: '{{repo_url}}'
     - name: output-image
-      value: quay.io/redhat-user-workloads/rhtap-build-tenant/build-trusted-artifacts/build-trusted-artifacts:{{revision}}
+      value: quay.io/redhat-user-workloads/rhtap-build-tenant/trusted-artifacts/trusted-artifacts:{{revision}}
     - name: path-context
       value: .
     - name: revision
