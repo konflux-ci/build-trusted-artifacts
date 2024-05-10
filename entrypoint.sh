@@ -35,6 +35,7 @@ time_format=''
 log() {
     :
 }
+
 if [[ -v DEBUG ]]; then
     iostat -d 1 &
     IOSTAT_PID=$!
@@ -49,6 +50,7 @@ if [[ -v DEBUG ]]; then
     export PS4='DEBUG $0.$LINENO: '
     set -o xtrace
 fi
+
 export -f log
 
 if [[ $# -eq 0 ]]; then
@@ -74,29 +76,12 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# The `--store`` was not provided, use first available workspace.
-if [ -z "${store}" ]; then
-    workspaces=(/workspace/*)
-    for w in "${workspaces[@]}"; do
-        if [ -d "${w}" ]; then
-            store="${w}"
-            echo "Using ${store} for artifact storage, provide --store <path> to customize"
-            break
-        fi
-    done
-fi
-
-if [ ! -d "${store}" ]; then
-    echo "Unable to use artifact store: ${store}, the provided path is either missing or not a directory"
-    exit 1
-fi
-
 case "${op}" in
     "create")
         TIME="${time_format}" time /usr/local/bin/create-archive --store "${store}" "${cmd[@]}"
         ;;
     "use")
-        TIME="${time_format}" time /usr/local/bin/use-archive --store "${store}" "${cmd[@]}"
+        TIME="${time_format}" time /usr/local/bin/use-archive "${cmd[@]}"
         ;;
     *)
         echo "Unsupported operation: ${op}"
