@@ -35,6 +35,22 @@ time_format=''
 log() {
     :
 }
+
+if [[ -v DEBUG ]]; then
+    iostat -d 1 &
+    IOSTAT_PID=$!
+    trap 'kill ${IOSTAT_PID}' EXIT
+    time_format='User:\t\t%U\nSystem:\t\t%S\nElapsed:\t%E\nCPU:\t\t%P\nMax RS:\t\t%MKiB\nAVG Memory:\t%KKiB\nInputs:\t\t%I\nOutputs:\t%O\nWaits:\t\t%w\n'
+    log() {
+        # shellcheck disable=SC2059
+        printf "DEBUG: %s\n" "$(printf "${@}")"
+    }
+
+    log "running as %s" "$(id)"
+    export PS4='DEBUG $0.$LINENO: '
+    set -o xtrace
+fi
+
 export -f log
 
 if [[ $# -eq 0 ]]; then
@@ -65,7 +81,7 @@ case "${op}" in
         TIME="${time_format}" time /usr/local/bin/create-archive --store "${store}" "${cmd[@]}"
         ;;
     "use")
-        TIME="${time_format}" time /usr/local/bin/use-archive --store "${store}" "${cmd[@]}"
+        TIME="${time_format}" time /usr/local/bin/use-archive "${cmd[@]}"
         ;;
     *)
         echo "Unsupported operation: ${op}"

@@ -1,7 +1,6 @@
 #!/bin/bash
 # Restores a trusted artifact, content of the destination will be removed.
 #
-# The --store parameter is ignored. It is kept to maintain compatibility with other storage types.
 #
 # Positional parametes are artifact pairs. These are strings. Each contains two parts separated by
 # an equal sign (=). The left portion refers to the uri of where the artifact can be fetch from.
@@ -25,11 +24,6 @@ artifact_pairs=()
 
 while [[ $# -gt 0 ]]; do
   case $1 in
-    --store)
-        store="$2"
-        shift
-        shift
-        ;;
     -*)
       echo "Unknown option $1"
       exit 1

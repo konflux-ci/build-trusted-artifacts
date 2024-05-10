@@ -31,7 +31,8 @@ RUN curl -LO "https://github.com/oras-project/oras/releases/download/v${ORAS_VER
     mkdir -p oras-install/ && \
     tar -zxf oras_${ORAS_VERSION}_*.tar.gz -C oras-install/ && \
     mv oras-install/oras /usr/local/bin/ && \
-    rm -rf oras_${ORAS_VERSION}_*.tar.gz oras-install/
+    rm -rf oras_${ORAS_VERSION}_*.tar.gz oras-install/ && \
+    oras version
 
 USER notroot
 
