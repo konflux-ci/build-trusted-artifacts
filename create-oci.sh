@@ -68,7 +68,7 @@ for artifact_pair in "${artifact_pairs[@]}"; do
 
     archive="${archive_dir}/${artifact_name}"
 
-    log "creating tar archive %s with files from %s" "${archive}" "${path}"
+    # log "creating tar archive %s with files from %s" "${archive}" "${path}"
 
     if [ ! -r "${path}" ]; then
         # non-existent paths result in empty archives

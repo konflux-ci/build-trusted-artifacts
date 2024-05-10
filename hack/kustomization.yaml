@@ -25,6 +25,8 @@ patches:
           image: ${repository}/build-trusted-artifacts
           args:
             - create
+            - --store 
+            - ${repository}/trusted-artifacts
             - $(results.SOURCE_ARTIFACT.path)=$(workspaces.output.path)/$(params.subdirectory)
   - target:
       kind: Task

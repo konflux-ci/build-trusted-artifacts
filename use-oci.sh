@@ -61,7 +61,7 @@ for artifact_pair in "${artifact_pairs[@]}"; do
     fi
 
     mkdir -p "${destination}"
-
+    
     type="${uri/:*}"
 
     if [ "${type}" != "oci" ]; then
@@ -69,7 +69,7 @@ for artifact_pair in "${artifact_pairs[@]}"; do
         exit 1
     fi
 
-    name="${uri#*:}"
+    name="${uri#*:}"  
 
     oras blob fetch --registry-config <(select-oci-auth.sh ${name}) \
         "${name}" --output - | tar -C "${destination}" "${tar_opts}" -
