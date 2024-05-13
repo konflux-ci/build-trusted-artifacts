@@ -37,9 +37,6 @@ log() {
 }
 
 if [[ -v DEBUG ]]; then
-    iostat -d 1 &
-    IOSTAT_PID=$!
-    trap 'kill ${IOSTAT_PID}' EXIT
     time_format='User:\t\t%U\nSystem:\t\t%S\nElapsed:\t%E\nCPU:\t\t%P\nMax RS:\t\t%MKiB\nAVG Memory:\t%KKiB\nInputs:\t\t%I\nOutputs:\t%O\nWaits:\t\t%w\n'
     log() {
         # shellcheck disable=SC2059

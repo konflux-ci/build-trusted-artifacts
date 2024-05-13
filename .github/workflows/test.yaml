@@ -1,18 +1,16 @@
 ---
 name: test
 
-# disabling temporarily
-# https://issues.redhat.com/browse/EC-633
-on: []
-  # pull_request:
-  #   branches:
-  #   - main
+on:
+  pull_request:
+    branches:
+    - main
 
-  # push:
-  #   branches:
-  #   - main
+  push:
+    branches:
+    - main
 
-  # workflow_dispatch:
+  workflow_dispatch:
 
 permissions:
   contents: read

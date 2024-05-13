@@ -13,6 +13,7 @@ Feature: Artifacts
 
     Scenario: Non-existant paths create empty archives
         When artifact "EMPTY" is created for file "nonexistant"
+        And artifact "EMPTY" is extracted for file "nonexistant"
         Then the created archive is empty
 
     Scenario: Artifacts containing multiple files
@@ -28,20 +29,3 @@ Feature: Artifacts
         | a/a1.txt    | A one   |
         | a/a2.txt    | A one   |
         | c/d/e/f.txt | File    |
-
-    Scenario: Debugging support in create
-       Given files:
-        | path           | content |
-        | src/readme.txt | Hi!     |
-        When running in debug mode
-         And artifact "SOURCES" is created for path "/src"
-        Then the logs contain words: "Device tps kB_wrtn/s System Waits"
-
-    Scenario: Debugging support in use
-       Given files:
-        | path           | content |
-        | src/readme.txt | Hi!     |
-        When running in debug mode
-         And artifact "SOURCES" is created for path "/src"
-         And artifact "SOURCES" is used
-        Then the logs contain words: "Device tps kB_wrtn/s System Waits"
