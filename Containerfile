@@ -25,9 +25,10 @@ RUN microdnf update --assumeyes --nodocs --setopt=keepcache=0 && \
     microdnf install --assumeyes --nodocs --setopt=keepcache=0 tar gzip time jq && \
     useradd --non-unique --uid 0 --gid 0 --shell /bin/bash notroot
 
-ARG ORAS_VERSION=1.1.0
+COPY download-oras.sh download-oras.sh
+ARG ORAS_VERSION=1.2.0-rc.1
 
-RUN curl -LO "https://github.com/oras-project/oras/releases/download/v${ORAS_VERSION}/oras_${ORAS_VERSION}_linux_amd64.tar.gz" && \
+RUN ./download-oras.sh ${ORAS_VERSION} && \
     mkdir -p oras-install/ && \
     tar -zxf oras_${ORAS_VERSION}_*.tar.gz -C oras-install/ && \
     mv oras-install/oras /usr/local/bin/ && \
