@@ -8,6 +8,12 @@ COPY use-oci.sh /usr/local/bin/use-archive
 COPY entrypoint.sh /usr/local/bin/entrypoint
 COPY LICENSE /licenses/LICENSE
 
+FROM registry.access.redhat.com/ubi9/ubi-minimal:latest as oras
+ARG ORAS_VERSION=1.2.0-rc.1
+ARG TARGETARCH
+ADD https://github.com/oras-project/oras/releases/download/v${ORAS_VERSION}/oras_${ORAS_VERSION}_linux_${TARGETARCH}.tar.gz /tmp
+RUN microdnf install --assumeyes tar gzip && tar -x -C /tmp -f /tmp/oras_${ORAS_VERSION}_linux_${TARGETARCH}.tar.gz
+
 FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
 
 LABEL \
@@ -20,20 +26,13 @@ LABEL \
   com.redhat.component="build-trusted-artifacts"
 
 COPY --from=files / /
+COPY --chown=0:0 --from=oras /tmp/oras /usr/local/bin/oras
 
 RUN microdnf update --assumeyes --nodocs --setopt=keepcache=0 && \
     microdnf install --assumeyes --nodocs --setopt=keepcache=0 tar gzip time jq && \
     useradd --non-unique --uid 0 --gid 0 --shell /bin/bash notroot
 
-COPY download-oras.sh download-oras.sh
-ARG ORAS_VERSION=1.2.0-rc.1
-
-RUN ./download-oras.sh ${ORAS_VERSION} && \
-    mkdir -p oras-install/ && \
-    tar -zxf oras_${ORAS_VERSION}_*.tar.gz -C oras-install/ && \
-    mv oras-install/oras /usr/local/bin/ && \
-    rm -rf oras_${ORAS_VERSION}_*.tar.gz oras-install/ && \
-    oras version
+RUN oras version
 
 USER notroot
 
