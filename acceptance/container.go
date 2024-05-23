@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -232,9 +233,13 @@ func getContainerLogs(ctx context.Context, contID string) string {
 }
 
 func buildContainerImage(ctx context.Context) error {
+	targetArch := runtime.GOARCH
 	opts := types.ImageBuildOptions{
 		Dockerfile: "Containerfile",
 		Tags:       []string{containerImage},
+		BuildArgs: map[string]*string{
+			"TARGETARCH": &targetArch,
+		},
 	}
 
 	buildContextPath, err := filepath.Abs("..")
