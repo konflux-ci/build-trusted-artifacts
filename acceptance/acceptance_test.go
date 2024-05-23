@@ -13,6 +13,9 @@ import (
 )
 
 const emptyFilePath = "sha256-85cea451eec057fa7e734548ca3ba6d779ed5836a3f9de14b8394575ef0d7d8e.tar.gz"
+const mountedPath = "/data"
+
+const testRegistryID = "registryID"
 
 func TestFeatures(t *testing.T) {
 	suite := godog.TestSuite{
@@ -50,6 +53,9 @@ func initializeScenario(sc *godog.ScenarioContext) {
 func initializeTestSuite(suite *godog.TestSuiteContext) {
 	ctx := context.Background()
 	suite.BeforeSuite(func() {
+		if err := createNetwork(ctx); err != nil {
+			panic(err)
+		}
 		if err := buildContainerImage(ctx); err != nil {
 			panic(err)
 		}
@@ -59,21 +65,43 @@ func initializeTestSuite(suite *godog.TestSuiteContext) {
 func setupScenario(ctx context.Context, sc *godog.Scenario) (context.Context, error) {
 	tempDir, err := os.MkdirTemp("", "ec-policies-")
 	if err != nil {
-		return ctx, fmt.Errorf("setting up scenario: %w", err)
+		return ctx, fmt.Errorf("setting up scenario - mktemp dir: %w", err)
 	}
 
 	ts, err := newTestState(tempDir)
 	if err != nil {
+		return ctx, fmt.Errorf("setting up scenario - newTestState: %w", err)
+	}
+
+	// generate self-signed certs and place in temp directory on the local machine
+	if err := generateSelfSignedCert(ts.domainCert(), ts.domainKey()); err != nil {
+		return ctx, err
+	}
+
+	binds, err := containerBinds(ts)
+	if err != nil {
+		return ctx, err
+	}
+
+	mountedTS := ts.forMount(mountedPath)
+	registryID, err := runRegistry(ctx, binds, mountedTS.domainCert(), mountedTS.domainKey())
+	if err != nil {
 		return ctx, fmt.Errorf("setting up scenario: %w", err)
 	}
+	ctx = context.WithValue(ctx, testRegistryID, registryID)
 
 	return setTestState(ctx, ts), nil
 }
 
 func teardownScenario(ctx context.Context, sc *godog.Scenario, _ error) (context.Context, error) {
 	// Purposely ignore errors here to prevent a teardown error to mask a test error.
+	if registryID, ok := ctx.Value(testRegistryID).(string); ok {
+		cleanupContainer(ctx, registryID)
+	}
+
 	ts, _ := getTestState(ctx)
 	_ = ts.teardown()
+
 	return ctx, nil
 }
 
@@ -88,21 +116,22 @@ func createSourceFile(ctx context.Context, fname string, content *godog.DocStrin
 }
 
 func createArtifact(ctx context.Context, result string, path string) (context.Context, error) {
+	// resultFile = where the image:sha is stored
+	// sourceFile = the files that are tarred and zipped
 	ts, err := getTestState(ctx)
 	if err != nil {
 		return ctx, fmt.Errorf("createArtifact get test state: %w", err)
 	}
 
 	// Set up the file paths as they will be seen within the container.
-	mountedTS := ts.forMount("/data")
+	storePath := fmt.Sprintf("%s:%s/%s", registryHost, registryPort, artifactContainer)
+	mountedTS := ts.forMount(mountedPath)
 	sourceFile := filepath.Join(mountedTS.sourceDir(), path)
 	resultFile := filepath.Join(mountedTS.resultsDir(), result)
-	storePath := mountedTS.artifactsDir()
 
-	binds := []string{
-		// TODO: The ":Z" option is required on Linux systems because of to selinux. This might not
-		// work on a mac, for example.
-		fmt.Sprintf("%s:%s:Z", ts.contextDir, mountedTS.contextDir),
+	binds, err := containerBinds(ts)
+	if err != nil {
+		return ctx, err
 	}
 
 	cmd := []string{
@@ -112,7 +141,7 @@ func createArtifact(ctx context.Context, result string, path string) (context.Co
 		fmt.Sprintf("%s=%s", resultFile, sourceFile),
 	}
 
-	if ctx, err = runContainer(ctx, cmd, binds); err != nil {
+	if ctx, err := runContainer(ctx, cmd, binds, mountedTS.domainCert()); err != nil {
 		return ctx, fmt.Errorf("creating artifact: %w", err)
 	}
 
@@ -122,43 +151,58 @@ func createArtifact(ctx context.Context, result string, path string) (context.Co
 func useArtifactForFile(ctx context.Context, result, path string) (context.Context, error) {
 	ts, err := getTestState(ctx)
 	if err != nil {
-		return ctx, fmt.Errorf("useArtifactForFile get test state: %w", err)
+		return nil, fmt.Errorf("useArtifactForFile get test state: %w", err)
 	}
 
-	resultInfo, err := os.ReadFile(filepath.Join(ts.resultsDir(), result))
+	binds, err := containerBinds(ts)
 	if err != nil {
-		return ctx, fmt.Errorf("reading result file: %w", err)
+		return ctx, err
 	}
 
-	// Set up the file paths as they will be seen within the container.
-	mountedTS := ts.forMount("/data")
-	storePath := mountedTS.artifactsDir()
-	restoredPath := mountedTS.restoredDir()
-
-	binds := []string{
-		// TODO: The ":Z" option is required on Linux systems because of to selinux. This might not
-		// work on a mac, for example.
-		fmt.Sprintf("%s:%s:Z", ts.contextDir, mountedTS.contextDir),
+	cmd, err := useCmd(ts, result)
+	if err != nil {
+		return ctx, err
 	}
 
-	cmd := []string{
-		"use",
-		"--store",
-		storePath,
-		fmt.Sprintf("%s=%s", resultInfo, restoredPath),
-	}
-
-	if ctx, err = runContainer(ctx, cmd, binds); err != nil {
-		return ctx, fmt.Errorf("creating artifact: %w", err)
+	mountedTS := ts.forMount(mountedPath)
+	if ctx, err = runContainer(ctx, cmd, binds, mountedTS.domainCert()); err != nil {
+		return ctx, fmt.Errorf("use artifact: %w", err)
 	}
 
 	return ctx, nil
 }
 
+func containerBinds(ts testState) ([]string, error) {
+	mountedTS := ts.forMount(mountedPath)
+	return []string{
+		// TODO: The ":Z" option is required on Linux systems because of selinux. This might not
+		// work on a mac, for example.
+		fmt.Sprintf("%s:%s:Z", ts.contextDir, mountedTS.contextDir),
+	}, nil
+}
+
+// return command and binds
+func useCmd(ts testState, result string) ([]string, error) {
+	// read the result file for the oci location and artifact sha
+	resultInfo, err := os.ReadFile(filepath.Join(ts.resultsDir(), result))
+	if err != nil {
+		return nil, fmt.Errorf("reading result file: %w", err)
+	}
+
+	// Set up the file paths as they will be seen within the container.
+	mountedTS := ts.forMount(mountedPath)
+	restoredPath := mountedTS.restoredDir()
+
+	return []string{
+		"use",
+		fmt.Sprintf("%s=%s", resultInfo, restoredPath),
+	}, nil
+}
+
 func restoredFileShouldMatchSource(ctx context.Context, fname string) (context.Context, error) {
 	ts, err := getTestState(ctx)
 	if err != nil {
-		return ctx, fmt.Errorf("useArtifactForFile get test state: %w", err)
+		return ctx, fmt.Errorf("restoredFileShouldMatchSource get test state: %w", err)
 	}
 
 	// To make diffs easier to read, convert []byte to string and split content by line.
@@ -193,8 +237,17 @@ func createdArchiveIsEmpty(ctx context.Context) (context.Context, error) {
 		return ctx, fmt.Errorf("createdArchiveIsEmpty no test state: %w", err)
 	}
 
-	if _, err := os.Stat(filepath.Join(ts.artifactsDir(), emptyFilePath)); err != nil {
-		return ctx, fmt.Errorf("the empty archive is not present: %v", err)
+	// The use-oci.sh script fetches the arvhive and outputs to stdout,
+	// so all we can do is check the restored dir for contents. We can also
+	// assume that since the extraction function succeeded, that the files,
+	// if any exist are restored.
+	entries, err := os.ReadDir(ts.restoredDir())
+	if err != nil {
+		return ctx, err
+	}
+
+	if len(entries) != 0 {
+		return ctx, fmt.Errorf("there are files in the restored dir: %q, %v", ts.restoredDir(), err)
 	}
 
 	return ctx, nil
@@ -241,8 +294,7 @@ func artifactContains(ctx context.Context, result string, files *godog.Table) (c
 	}
 
 	// Set up the file paths as they will be seen within the container.
-	mountedTS := ts.forMount("/data")
-	storePath := mountedTS.artifactsDir()
+	mountedTS := ts.forMount(mountedPath)
 	restoredPath := mountedTS.restoredDir()
 
 	binds := []string{
@@ -253,12 +305,10 @@ func artifactContains(ctx context.Context, result string, files *godog.Table) (c
 
 	cmd := []string{
 		"use",
-		"--store",
-		storePath,
 		fmt.Sprintf("%s=%s", archiveUri, restoredPath),
 	}
 
-	if ctx, err = runContainer(ctx, cmd, binds); err != nil {
+	if ctx, err = runContainer(ctx, cmd, binds, mountedTS.domainCert()); err != nil {
 		return ctx, fmt.Errorf("using artifact: %w", err)
 	}
 

@@ -105,8 +105,11 @@ if [[ -n  "${IMAGE_EXPIRES_AFTER:-}" ]]; then
     config="${config_file}:application/vnd.oci.image.config.v1+json"
 fi
 
+# read in any oras options
+source oras_opts.sh
+
 pushd "${archive_dir}" > /dev/null
-oras push --registry-config <(select-oci-auth.sh ${repo}) "${store}" --config="${config:-}" \
+oras push "${oras_opts[@]}" --registry-config <(select-oci-auth.sh ${repo}) "${store}" --config="${config:-}" \
     "${artifacts[@]}"
 popd > /dev/null
 

@@ -4,27 +4,36 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"os/user"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/filters"
+	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/archive"
+	"github.com/docker/go-connections/nat"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
 var containerClient *client.Client
 
-const containerImage = "local.build-trusted-artifacts:acceptance"
-
-const waitTimeout = 1 * time.Minute
-
-const environmentKey = "env"
-
-const logsKey = "logs"
+const (
+	containerImage    = "local-build-trusted-artifacts:acceptance"
+	waitTimeout       = 1 * time.Minute
+	environmentKey    = "env"
+	logsKey           = "logs"
+	networkName       = "trusted-artifacts-network"
+	registryHost      = "trusted-artifacts-registry"
+	artifactContainer = "trusted-artifacts"
+	registryPort      = "5000"
+	registryImage     = "docker.io/library/registry:2.8.3"
+)
 
 func init() {
 	var err error
@@ -34,11 +43,116 @@ func init() {
 	}
 }
 
-func runContainer(ctx context.Context, cmd, binds []string) (context.Context, error) {
+func runRegistry(ctx context.Context, binds []string, certs, key string) (string, error) {
+	user, err := user.Current()
+	if err != nil {
+		return "", err
+	}
+
+	imageExists, err := imageExists(ctx, registryImage)
+	if err != nil {
+		return "", err
+	}
+
+	portMap := nat.PortMap{
+		"5000/tcp": []nat.PortBinding{
+			{
+				HostIP:   "0.0.0.0",
+				HostPort: "5000",
+			},
+		},
+	}
+
+	tempDir, err := os.MkdirTemp("", "registry-")
+	if err != nil {
+		return "", fmt.Errorf("setting up scenario: %w", err)
+	}
+
+	binds = append(binds, fmt.Sprintf("%s:/var/lib/registry:Z", tempDir))
+
+	if !imageExists {
+		// Pull the image
+		reader, err := containerClient.ImagePull(ctx, registryImage, image.PullOptions{})
+		if err != nil {
+			panic(err)
+		}
+		defer reader.Close()
+		io.Copy(os.Stdout, reader)
+	}
+
+	cont, err := containerClient.ContainerCreate(
+		ctx,
+		&container.Config{
+			Hostname: registryHost,
+			Env: []string{
+				fmt.Sprintf("REGISTRY_HTTP_TLS_CERTIFICATE=%s", certs),
+				fmt.Sprintf("REGISTRY_HTTP_TLS_KEY=%s", key),
+			},
+			Image: registryImage,
+			User:  user.Uid,
+			ExposedPorts: nat.PortSet{
+				"5000/tcp": struct{}{},
+			},
+		},
+		&container.HostConfig{
+			Binds:        binds,
+			PortBindings: portMap,
+			NetworkMode:  container.NetworkMode(networkName),
+			SecurityOpt:  []string{"label:disable"},
+			Privileged:   true,
+		},
+		&network.NetworkingConfig{
+			EndpointsConfig: map[string]*network.EndpointSettings{},
+		},
+		&ocispec.Platform{},
+		registryHost,
+	)
+
+	if err != nil {
+		return "", fmt.Errorf("creating container: %w", err)
+	}
+
+	if err := containerClient.ContainerStart(ctx, cont.ID, container.StartOptions{}); err != nil {
+		return "", fmt.Errorf("starting container %s: %w", cont.ID, err)
+	}
+
+	return cont.ID, nil
+}
+
+func stopContainer(ctx context.Context, containerID string) error {
+	return containerClient.ContainerRemove(ctx, containerID, container.RemoveOptions{Force: true})
+}
+
+func cleanupContainer(ctx context.Context, containerID string) error {
+	containerJSON, err := containerClient.ContainerInspect(ctx, containerID)
+	if err != nil {
+		return fmt.Errorf("inspecting container: %w", err)
+	}
+
+	stopContainer(ctx, containerID)
+
+	hostBinds := containerJSON.HostConfig.Binds
+	// Remove bind mounts
+	for _, bind := range hostBinds {
+		paths := strings.Split(bind, ":")
+		if len(paths) != 2 {
+			return fmt.Errorf("invalid bind mount specification: %s", bind)
+		}
+		hostPath := paths[0]
+		if err := os.RemoveAll(hostPath); err != nil {
+			return fmt.Errorf("removing bind mount %s: %w", hostPath, err)
+		}
+	}
+
+	return nil
+}
+
+func runContainer(ctx context.Context, cmd, binds []string, cert string) (context.Context, error) {
 	var env []string
 	if e, ok := ctx.Value(environmentKey).([]string); ok {
 		env = e
 	}
+	env = append(env, fmt.Sprintf("CA_FILE=%s", cert))
 
 	user, err := user.Current()
 	if err != nil {
@@ -55,11 +169,12 @@ func runContainer(ctx context.Context, cmd, binds []string) (context.Context, er
 			User:  user.Uid,
 		},
 		&container.HostConfig{
-			Binds: binds,
+			Binds:       binds,
+			NetworkMode: container.NetworkMode(networkName),
 		},
 		&network.NetworkingConfig{},
 		&ocispec.Platform{},
-		"", // Let docker pick a name.
+		artifactContainer,
 	)
 	if err != nil {
 		return ctx, fmt.Errorf("creating container: %w", err)
@@ -142,4 +257,62 @@ func buildContainerImage(ctx context.Context) error {
 	defer buildResponse.Body.Close()
 
 	return nil
+}
+
+func networkExists(ctx context.Context, name string) (bool, error) {
+	filters := filters.NewArgs()
+	filters.Add("name", name)
+
+	networks, err := containerClient.NetworkList(ctx, types.NetworkListOptions{
+		Filters: filters,
+	})
+	if err != nil {
+		return false, err
+	}
+
+	for _, network := range networks {
+		if network.Name == name {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
+func createNetwork(ctx context.Context) error {
+	exists, err := networkExists(ctx, networkName)
+	if err != nil {
+		return err
+	}
+
+	if !exists {
+		netConfig := types.NetworkCreate{
+			CheckDuplicate: true,
+			Driver:         "bridge",
+			Scope:          "local",
+		}
+
+		// Create the network
+		if _, err := containerClient.NetworkCreate(ctx, networkName, netConfig); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func imageExists(ctx context.Context, imageName string) (bool, error) {
+	images, err := containerClient.ImageList(ctx, types.ImageListOptions{})
+	if err != nil {
+		return false, err
+	}
+
+	for _, image := range images {
+		for _, tag := range image.RepoTags {
+			if tag == imageName {
+				return true, nil
+			}
+		}
+	}
+
+	return false, nil
 }

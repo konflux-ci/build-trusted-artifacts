@@ -35,6 +35,9 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+# read in any oras options
+source oras_opts.sh
+
 for artifact_pair in "${artifact_pairs[@]}"; do
     uri="${artifact_pair/=*}"
     destination="$(realpath "${artifact_pair/*=}")"
@@ -65,7 +68,7 @@ for artifact_pair in "${artifact_pairs[@]}"; do
 
     name="${uri#*:}"  
 
-    oras blob fetch --registry-config <(select-oci-auth.sh ${name}) \
+    oras blob fetch "${oras_opts[@]}" --registry-config <(select-oci-auth.sh ${name}) \
         "${name}" --output - | tar -C "${destination}" "${tar_opts}" -
 
     echo "Restored artifact ${name} to ${destination}"

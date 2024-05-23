@@ -10,7 +10,10 @@ import (
 
 type testState struct {
 	contextDir string
+	certs      string
 }
+
+const certs = "certs"
 
 // Used to set/get state from a context.
 type testStateKey struct{}
@@ -33,7 +36,7 @@ func newTestState(contextDir string) (testState, error) {
 }
 
 func (ts *testState) mkdirs() error {
-	for _, d := range []string{ts.sourceDir(), ts.artifactsDir(), ts.resultsDir(), ts.restoredDir()} {
+	for _, d := range []string{ts.sourceDir(), ts.artifactsDir(), ts.resultsDir(), ts.restoredDir(), ts.certsDir()} {
 		if err := os.MkdirAll(d, 0700); err != nil {
 			return fmt.Errorf("newTestState creating %s: %w", d, err)
 		}
@@ -55,6 +58,18 @@ func (ts *testState) resultsDir() string {
 
 func (ts *testState) restoredDir() string {
 	return filepath.Join(ts.contextDir, "restored")
+}
+
+func (ts *testState) certsDir() string {
+	return filepath.Join(ts.contextDir, "certs")
+}
+
+func (ts *testState) domainCert() string {
+	return fmt.Sprintf("%s/domain.crt", ts.certsDir())
+}
+
+func (ts *testState) domainKey() string {
+	return fmt.Sprintf("%s/domain.key", ts.certsDir())
 }
 
 func (ts *testState) forMount(mountDir string) testState {
