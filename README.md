@@ -90,7 +90,7 @@ The `hack/demo.sh` will push to `$REPOSITORY/build-trusted-artifacts` and
 `$REPOSITORY/golden`.
 
 The demo script patches the `git-clone` and `buildah` Task definitions form
-https://github.com/redhat-appstudio/build-definitions/ and expects that
+https://github.com/konflux-ci/build-definitions/ and expects that
 repository to be cloned in `../build-definitions` directory.
 
 With that setup, the `hack/demo.sh`, will spin up a kind cluster, setup
