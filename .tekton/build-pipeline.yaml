@@ -572,9 +572,9 @@ spec:
     - name: clair-scan
       params:
         - name: image-digest
-          value: $(tasks.build-container-amd64.results.IMAGE_DIGEST)
+          value: $(tasks.build-container.results.IMAGE_DIGEST)
         - name: image-url
-          value: $(tasks.build-container-amd64.results.IMAGE_URL)
+          value: $(tasks.build-container.results.IMAGE_URL)
       runAfter:
         - build-container-amd64
       taskRef:
@@ -634,9 +634,9 @@ spec:
     - name: clamav-scan
       params:
         - name: image-digest
-          value: $(tasks.build-container-amd64.results.IMAGE_DIGEST)
+          value: $(tasks.build-container.results.IMAGE_DIGEST)
         - name: image-url
-          value: $(tasks.build-container-amd64.results.IMAGE_URL)
+          value: $(tasks.build-container.results.IMAGE_URL)
       runAfter:
         - build-container-amd64
       taskRef:
@@ -656,9 +656,9 @@ spec:
     - name: sbom-json-check
       params:
         - name: IMAGE_URL
-          value: $(tasks.build-container-amd64.results.IMAGE_URL)
+          value: $(tasks.build-container.results.IMAGE_URL)
         - name: IMAGE_DIGEST
-          value: $(tasks.build-container-amd64.results.IMAGE_DIGEST)
+          value: $(tasks.build-container.results.IMAGE_DIGEST)
       runAfter:
         - build-container-amd64
       taskRef:
