@@ -50,7 +50,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-if [[ -z "$store" ]]; then
+if [[ -z "${store:-}" ]]; then
     echo "--store cannot be empty when creating OCI artifacts"
     exit 1
 fi
