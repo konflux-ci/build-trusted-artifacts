@@ -13,32 +13,10 @@ spec:
           - name: name
             value: show-sbom
           - name: bundle
-            value: quay.io/redhat-appstudio-tekton-catalog/task-show-sbom:0.1@sha256:1f1504c5d8b135864111a993ac6f9ab1212907fa0c609223714cdd7bd825e2ca
+            value: quay.io/konflux-ci/tekton-catalog/task-show-sbom:0.1@sha256:bb6de6584cc47524ac69d2fb0bc310e546696b707e4052a465966e2446e33a15
           - name: kind
             value: task
         resolver: bundles
-    - name: show-summary
-      params:
-        - name: pipelinerun-name
-          value: $(context.pipelineRun.name)
-        - name: git-url
-          value: $(tasks.clone-repository-amd64.results.url)?rev=$(tasks.clone-repository-amd64.results.commit)
-        - name: image-url
-          value: $(params.output-image)
-        - name: build-task-status
-          value: $(tasks.build-container.status)
-      taskRef:
-        params:
-          - name: name
-            value: summary
-          - name: bundle
-            value: quay.io/redhat-appstudio-tekton-catalog/task-summary:0.2@sha256:c718319bd57c4f0ab1843cf98d813d0a26a73e0c8ce66218079c3c865508b0fb
-          - name: kind
-            value: task
-        resolver: bundles
-      workspaces:
-        - name: workspace
-          workspace: workspace
   params:
     - description: Source Repository URL
       name: git-url
@@ -85,8 +63,12 @@ spec:
       description: Build a source image.
       name: build-source-image
       type: string
+    - default: []
+      description: Array of --build-arg values ("arg=value" strings) for buildah
+      name: build-args
+      type: array
     - default: ""
-      description: Path to a file with build arguments which will be passed to podman during build
+      description: Path to a file with build arguments for buildah, see https://www.mankier.com/1/buildah-build#--build-arg-file
       name: build-args-file
       type: string
   results:
@@ -98,10 +80,10 @@ spec:
       value: $(tasks.build-container.results.IMAGE_DIGEST)
     - description: ""
       name: CHAINS-GIT_URL
-      value: $(tasks.clone-repository-amd64.results.url)
+      value: $(tasks.clone-repository.results.url)
     - description: ""
       name: CHAINS-GIT_COMMIT
-      value: $(tasks.clone-repository-amd64.results.commit)
+      value: $(tasks.clone-repository.results.commit)
     - description: ""
       name: JAVA_COMMUNITY_DEPENDENCIES
       value: $(tasks.build-container-amd64.results.JAVA_COMMUNITY_DEPENDENCIES)
@@ -119,24 +101,28 @@ spec:
           - name: name
             value: init
           - name: bundle
-            value: quay.io/redhat-appstudio-tekton-catalog/task-init:0.2@sha256:b23c7a924f303a67b3a00b32a6713ae1a4fccbc5327daa76a6edd250501ea7a3
+            value: quay.io/konflux-ci/tekton-catalog/task-init:0.2@sha256:83b7df553a736def52dd47bca2a3614c8fa2c88d112d691a4834289cf8c2abf5
           - name: kind
             value: task
         resolver: bundles
-    - name: clone-repository-amd64
+    - name: clone-repository
       params:
         - name: url
           value: $(params.git-url)
         - name: revision
           value: $(params.revision)
+        - name: ociStorage
+          value: $(params.output-image).git
+        - name: ociArtifactExpiresAfter
+          value: $(params.image-expires-after)
       runAfter:
         - init
       taskRef:
         params:
           - name: name
-            value: git-clone
+            value: git-clone-oci-ta
           - name: bundle
-            value: quay.io/redhat-appstudio-tekton-catalog/task-git-clone:0.1@sha256:ae1249aa49e82da5f99cc23b256172dce8f7c7951ece68ca0419240c4ecb52e2
+            value: quay.io/konflux-ci/tekton-catalog/task-git-clone-oci-ta:0.1@sha256:b3e734ff1fd171734a9a110a74f467f47ad825f061640a95f13dbf974c6ca061
           - name: kind
             value: task
         resolver: bundles
@@ -146,33 +132,30 @@ spec:
           values:
             - "true"
       workspaces:
-        - name: output
-          workspace: workspace-amd64
         - name: basic-auth
           workspace: git-auth
-    - name: prefetch-dependencies-amd64
+    - name: prefetch-dependencies
       params:
         - name: input
           value: $(params.prefetch-input)
+        - name: SOURCE_ARTIFACT
+          value: $(tasks.clone-repository.results.SOURCE_ARTIFACT)
+        - name: ociStorage
+          value: $(params.output-image).prefetch
+        - name: ociArtifactExpiresAfter
+          value: $(params.image-expires-after)
       runAfter:
-        - clone-repository-amd64
+        - clone-repository
       taskRef:
         params:
           - name: name
-            value: prefetch-dependencies
+            value: prefetch-dependencies-oci-ta
           - name: bundle
-            value: quay.io/redhat-appstudio-tekton-catalog/task-prefetch-dependencies:0.1@sha256:9aec3ae9f0f50a05abdc739faf4cbc82832cff16c77ac74e1d54072a882c0503
+            value: quay.io/konflux-ci/tekton-catalog/task-prefetch-dependencies-oci-ta:0.1@sha256:0161837c325e0a7756590cf9e34ef5e9e14efae4e719112793d3f3c84f224d12
           - name: kind
             value: task
         resolver: bundles
-      when:
-        - input: $(params.prefetch-input)
-          operator: notin
-          values:
-            - ""
       workspaces:
-        - name: source
-          workspace: workspace-amd64
         - name: git-basic-auth
           workspace: git-auth
     - name: build-container-amd64
@@ -190,17 +173,21 @@ spec:
         - name: IMAGE_EXPIRES_AFTER
           value: $(params.image-expires-after)
         - name: COMMIT_SHA
-          value: $(tasks.clone-repository-amd64.results.commit)
+          value: $(tasks.clone-repository.results.commit)
         - name: BUILD_ARGS_FILE
           value: $(params.build-args-file)
+        - name: SOURCE_ARTIFACT
+          value: $(tasks.prefetch-dependencies.results.SOURCE_ARTIFACT)
+        - name: CACHI2_ARTIFACT
+          value: $(tasks.prefetch-dependencies.results.CACHI2_ARTIFACT)
       runAfter:
-        - prefetch-dependencies-amd64
+        - prefetch-dependencies
       taskRef:
         params:
           - name: name
-            value: buildah
+            value: buildah-oci-ta
           - name: bundle
-            value: quay.io/redhat-appstudio-tekton-catalog/task-buildah:0.1@sha256:b8d50716c01160be5deb27dd30f79ae33cc89c72952285cd850323fa0a88b8db
+            value: quay.io/konflux-ci/tekton-catalog/task-buildah-oci-ta:0.1@sha256:706739b3b83ec2b00da0187a01981b50bf210f2c030a060dbeb43144e10c0d75
           - name: kind
             value: task
         resolver: bundles
@@ -209,65 +196,10 @@ spec:
           operator: in
           values:
             - "true"
-      workspaces:
-        - name: source
-          workspace: workspace-amd64
-    - name: clone-repository-arm64
-      params:
-        - name: url
-          value: $(params.git-url)
-        - name: revision
-          value: $(params.revision)
-      runAfter:
-        - init
-      taskRef:
-        params:
-          - name: name
-            value: git-clone
-          - name: bundle
-            value: quay.io/redhat-appstudio-tekton-catalog/task-git-clone:0.1@sha256:ae1249aa49e82da5f99cc23b256172dce8f7c7951ece68ca0419240c4ecb52e2
-          - name: kind
-            value: task
-        resolver: bundles
-      when:
-        - input: $(tasks.init.results.build)
-          operator: in
-          values:
-            - "true"
-      workspaces:
-        - name: output
-          workspace: workspace-arm64
-        - name: basic-auth
-          workspace: git-auth
-    - name: prefetch-dependencies-arm64
-      params:
-        - name: input
-          value: $(params.prefetch-input)
-      runAfter:
-        - clone-repository-arm64
-      taskRef:
-        params:
-          - name: name
-            value: prefetch-dependencies
-          - name: bundle
-            value: quay.io/redhat-appstudio-tekton-catalog/task-prefetch-dependencies:0.1@sha256:9aec3ae9f0f50a05abdc739faf4cbc82832cff16c77ac74e1d54072a882c0503
-          - name: kind
-            value: task
-        resolver: bundles
-      when:
-        - input: $(params.prefetch-input)
-          operator: notin
-          values:
-            - ""
-      workspaces:
-        - name: source
-          workspace: workspace-arm64
-        - name: git-basic-auth
-          workspace: git-auth
     - name: build-container-arm64
       params:
         - name: IMAGE
-          value: $(params.output-image)-arm64
+          value: $(params.output-image)-amd64
         - name: DOCKERFILE
           value: $(params.dockerfile)
         - name: CONTEXT
@@ -279,19 +211,23 @@ spec:
         - name: IMAGE_EXPIRES_AFTER
           value: $(params.image-expires-after)
         - name: COMMIT_SHA
-          value: $(tasks.clone-repository-arm64.results.commit)
+          value: $(tasks.clone-repository.results.commit)
         - name: BUILD_ARGS_FILE
           value: $(params.build-args-file)
+        - name: SOURCE_ARTIFACT
+          value: $(tasks.prefetch-dependencies.results.SOURCE_ARTIFACT)
+        - name: CACHI2_ARTIFACT
+          value: $(tasks.prefetch-dependencies.results.CACHI2_ARTIFACT)
         - name: PLATFORM
           value: linux/arm64
       runAfter:
-        - prefetch-dependencies-arm64
+        - prefetch-dependencies
       taskRef:
         params:
           - name: name
-            value: buildah-remote
+            value: buildah-remote-oci-ta
           - name: bundle
-            value: quay.io/redhat-appstudio-tekton-catalog/task-buildah-remote:0.1@sha256:09ad5680c2b9ed61abb40c2f0071b7e889f799a47e1ece546299617d79e299f1
+            value: quay.io/konflux-ci/tekton-catalog/task-buildah-remote-oci-ta:0.1@sha256:cff053738628f2e670369c6b5239f8838c66a9b48620b73a19fee4579757d38a
           - name: kind
             value: task
         resolver: bundles
@@ -300,61 +236,6 @@ spec:
           operator: in
           values:
             - "true"
-      workspaces:
-        - name: source
-          workspace: workspace-arm64
-    - name: clone-repository-ppc64le
-      params:
-        - name: url
-          value: $(params.git-url)
-        - name: revision
-          value: $(params.revision)
-      runAfter:
-        - init
-      taskRef:
-        params:
-          - name: name
-            value: git-clone
-          - name: bundle
-            value: quay.io/redhat-appstudio-tekton-catalog/task-git-clone:0.1@sha256:ae1249aa49e82da5f99cc23b256172dce8f7c7951ece68ca0419240c4ecb52e2
-          - name: kind
-            value: task
-        resolver: bundles
-      when:
-        - input: $(tasks.init.results.build)
-          operator: in
-          values:
-            - "true"
-      workspaces:
-        - name: output
-          workspace: workspace-ppc64le
-        - name: basic-auth
-          workspace: git-auth
-    - name: prefetch-dependencies-ppc64le
-      params:
-        - name: input
-          value: $(params.prefetch-input)
-      runAfter:
-        - clone-repository-ppc64le
-      taskRef:
-        params:
-          - name: name
-            value: prefetch-dependencies
-          - name: bundle
-            value: quay.io/redhat-appstudio-tekton-catalog/task-prefetch-dependencies:0.1@sha256:9aec3ae9f0f50a05abdc739faf4cbc82832cff16c77ac74e1d54072a882c0503
-          - name: kind
-            value: task
-        resolver: bundles
-      when:
-        - input: $(params.prefetch-input)
-          operator: notin
-          values:
-            - ""
-      workspaces:
-        - name: source
-          workspace: workspace-ppc64le
-        - name: git-basic-auth
-          workspace: git-auth
     - name: build-container-ppc64le
       params:
         - name: IMAGE
@@ -370,19 +251,23 @@ spec:
         - name: IMAGE_EXPIRES_AFTER
           value: $(params.image-expires-after)
         - name: COMMIT_SHA
-          value: $(tasks.clone-repository-ppc64le.results.commit)
+          value: $(tasks.clone-repository.results.commit)
         - name: BUILD_ARGS_FILE
           value: $(params.build-args-file)
+        - name: SOURCE_ARTIFACT
+          value: $(tasks.prefetch-dependencies.results.SOURCE_ARTIFACT)
+        - name: CACHI2_ARTIFACT
+          value: $(tasks.prefetch-dependencies.results.CACHI2_ARTIFACT)
         - name: PLATFORM
           value: linux/ppc64le
       runAfter:
-        - prefetch-dependencies-ppc64le
+        - prefetch-dependencies
       taskRef:
         params:
           - name: name
-            value: buildah-remote
+            value: buildah-remote-oci-ta
           - name: bundle
-            value: quay.io/redhat-appstudio-tekton-catalog/task-buildah-remote:0.1@sha256:09ad5680c2b9ed61abb40c2f0071b7e889f799a47e1ece546299617d79e299f1
+            value: quay.io/konflux-ci/tekton-catalog/task-buildah-remote-oci-ta:0.1@sha256:cff053738628f2e670369c6b5239f8838c66a9b48620b73a19fee4579757d38a
           - name: kind
             value: task
         resolver: bundles
@@ -391,61 +276,6 @@ spec:
           operator: in
           values:
             - "true"
-      workspaces:
-        - name: source
-          workspace: workspace-ppc64le
-    - name: clone-repository-s390x
-      params:
-        - name: url
-          value: $(params.git-url)
-        - name: revision
-          value: $(params.revision)
-      runAfter:
-        - init
-      taskRef:
-        params:
-          - name: name
-            value: git-clone
-          - name: bundle
-            value: quay.io/redhat-appstudio-tekton-catalog/task-git-clone:0.1@sha256:ae1249aa49e82da5f99cc23b256172dce8f7c7951ece68ca0419240c4ecb52e2
-          - name: kind
-            value: task
-        resolver: bundles
-      when:
-        - input: $(tasks.init.results.build)
-          operator: in
-          values:
-            - "true"
-      workspaces:
-        - name: output
-          workspace: workspace-s390x
-        - name: basic-auth
-          workspace: git-auth
-    - name: prefetch-dependencies-s390x
-      params:
-        - name: input
-          value: $(params.prefetch-input)
-      runAfter:
-        - clone-repository-s390x
-      taskRef:
-        params:
-          - name: name
-            value: prefetch-dependencies
-          - name: bundle
-            value: quay.io/redhat-appstudio-tekton-catalog/task-prefetch-dependencies:0.1@sha256:9aec3ae9f0f50a05abdc739faf4cbc82832cff16c77ac74e1d54072a882c0503
-          - name: kind
-            value: task
-        resolver: bundles
-      when:
-        - input: $(params.prefetch-input)
-          operator: notin
-          values:
-            - ""
-      workspaces:
-        - name: source
-          workspace: workspace-s390x
-        - name: git-basic-auth
-          workspace: git-auth
     - name: build-container-s390x
       params:
         - name: IMAGE
@@ -461,19 +291,23 @@ spec:
         - name: IMAGE_EXPIRES_AFTER
           value: $(params.image-expires-after)
         - name: COMMIT_SHA
-          value: $(tasks.clone-repository-s390x.results.commit)
+          value: $(tasks.clone-repository.results.commit)
         - name: BUILD_ARGS_FILE
           value: $(params.build-args-file)
+        - name: SOURCE_ARTIFACT
+          value: $(tasks.prefetch-dependencies.results.SOURCE_ARTIFACT)
+        - name: CACHI2_ARTIFACT
+          value: $(tasks.prefetch-dependencies.results.CACHI2_ARTIFACT)
         - name: PLATFORM
           value: linux/s390x
       runAfter:
-        - prefetch-dependencies-s390x
+        - prefetch-dependencies
       taskRef:
         params:
           - name: name
-            value: buildah-remote
+            value: buildah-remote-oci-ta
           - name: bundle
-            value: quay.io/redhat-appstudio-tekton-catalog/task-buildah-remote:0.1@sha256:09ad5680c2b9ed61abb40c2f0071b7e889f799a47e1ece546299617d79e299f1
+            value: quay.io/konflux-ci/tekton-catalog/task-buildah-remote-oci-ta:0.1@sha256:cff053738628f2e670369c6b5239f8838c66a9b48620b73a19fee4579757d38a
           - name: kind
             value: task
         resolver: bundles
@@ -482,15 +316,12 @@ spec:
           operator: in
           values:
             - "true"
-      workspaces:
-        - name: source
-          workspace: workspace-s390x
     - name: build-container
       params:
         - name: IMAGE
           value: $(params.output-image)
         - name: COMMIT_SHA
-          value: $(tasks.clone-repository-amd64.results.commit)
+          value: $(tasks.clone-repository.results.commit)
         - name: IMAGES
           value:
             - $(tasks.build-container-amd64.results.IMAGE_URL)@$(tasks.build-container-amd64.results.IMAGE_DIGEST)
@@ -507,7 +338,7 @@ spec:
           - name: name
             value: build-image-manifest
           - name: bundle
-            value: quay.io/redhat-appstudio-tekton-catalog/task-build-image-manifest:0.1@sha256:e064b63b2311d23d6bf6538347cb4eb18c980d61883f48149bc9c728f76b276c
+            value: quay.io/konflux-ci/tekton-catalog/task-build-image-manifest:0.1@sha256:fd0a0cf019621d6b577f1b9ab774bb1832f7cba61b4ceee2fd1bffc96895abf9
           - name: kind
             value: task
         resolver: bundles
@@ -522,14 +353,18 @@ spec:
           value: $(params.output-image)
         - name: BASE_IMAGES
           value: $(tasks.build-container-amd64.results.BASE_IMAGES_DIGESTS)
+        - name: SOURCE_ARTIFACT
+          value: $(tasks.prefetch-dependencies.results.SOURCE_ARTIFACT)
+        - name: CACHI2_ARTIFACT
+          value: $(tasks.prefetch-dependencies.results.CACHI2_ARTIFACT)
       runAfter:
         - build-container
       taskRef:
         params:
           - name: name
-            value: source-build
+            value: source-build-oci-ta
           - name: bundle
-            value: quay.io/redhat-appstudio-tekton-catalog/task-source-build:0.1@sha256:1a976a35adee9163e455d0c5aee5d9bf9cb3c6a770656ae347558f8c54977709
+            value: quay.io/konflux-ci/tekton-catalog/task-source-build-oci-ta:0.1@sha256:391b4616b3590145d1f5ba716755ef60d9e132b57c5639c2b3f8f4323d72f39c
           - name: kind
             value: task
         resolver: bundles
@@ -542,11 +377,11 @@ spec:
           operator: in
           values:
             - "true"
-      workspaces:
-        - name: workspace
-          workspace: workspace-amd64
     - name: deprecated-base-image-check
       params:
+        # TODO: This task does not yet support Image Indexes. Since all arches are built from the same
+        # source (and Containerfile), we only need to run this check against one of the arches.
+        # https://issues.redhat.com/browse/KFLUXBUGS-1316
         - name: BASE_IMAGES_DIGESTS
           value: $(tasks.build-container-amd64.results.BASE_IMAGES_DIGESTS)
         - name: IMAGE_URL
@@ -554,13 +389,13 @@ spec:
         - name: IMAGE_DIGEST
           value: $(tasks.build-container-amd64.results.IMAGE_DIGEST)
       runAfter:
-        - build-container-amd64
+        - build-container
       taskRef:
         params:
           - name: name
             value: deprecated-image-check
           - name: bundle
-            value: quay.io/redhat-appstudio-tekton-catalog/task-deprecated-image-check:0.4@sha256:3793fbf59e7dadff9d1f7e7ea4cc430c69a2de620b20c7fd69d71bdd5f6c4a60
+            value: quay.io/konflux-ci/tekton-catalog/task-deprecated-image-check:0.4@sha256:9d33c7dbb67c8d6580959792cb395790c3bde1ad877d120c9fd62161fc0452a7
           - name: kind
             value: task
         resolver: bundles
@@ -576,13 +411,13 @@ spec:
         - name: image-url
           value: $(tasks.build-container.results.IMAGE_URL)
       runAfter:
-        - build-container-amd64
+        - build-container
       taskRef:
         params:
           - name: name
             value: clair-scan
           - name: bundle
-            value: quay.io/redhat-appstudio-tekton-catalog/task-clair-scan:0.1@sha256:44d0df70080e082e72d2694b14130ff512e5e7f2611190161a9b016b4df9fb22
+            value: quay.io/konflux-ci/tekton-catalog/task-clair-scan:0.1@sha256:eed371ce8d1473e31a0befaa60134dedce47debe9527df0932f7fdea6a0c73b9
           - name: kind
             value: task
         resolver: bundles
@@ -594,7 +429,7 @@ spec:
     - name: ecosystem-cert-preflight-checks
       params:
         - name: image-url
-          value: $(tasks.build-container-amd64.results.IMAGE_URL)
+          value: $(tasks.build-container.results.IMAGE_URL)
       runAfter:
         - build-container
       taskRef:
@@ -602,7 +437,7 @@ spec:
           - name: name
             value: ecosystem-cert-preflight-checks
           - name: bundle
-            value: quay.io/redhat-appstudio-tekton-catalog/task-ecosystem-cert-preflight-checks:0.1@sha256:b6c1276b983d7ec6f8cf250056e904887f519bb6e54d538525f6314b681bd728
+            value: quay.io/konflux-ci/tekton-catalog/task-ecosystem-cert-preflight-checks:0.1@sha256:8838d3e1628dbe61f4851b3640d2e3a9a3079d3ff3da955f4a3e4c2c95a013df
           - name: kind
             value: task
         resolver: bundles
@@ -612,14 +447,17 @@ spec:
           values:
             - "false"
     - name: sast-snyk-check
+      params:
+        - name: SOURCE_ARTIFACT
+          value: $(tasks.prefetch-dependencies.results.SOURCE_ARTIFACT)
       runAfter:
-        - clone-repository-amd64
+        - clone-repository
       taskRef:
         params:
           - name: name
-            value: sast-snyk-check
+            value: sast-snyk-check-oci-ta
           - name: bundle
-            value: quay.io/redhat-appstudio-tekton-catalog/task-sast-snyk-check:0.1@sha256:242acc527a06a11fac9dd6524467f62f3a086c186c5f885973e5780a04d4289c
+            value: quay.io/konflux-ci/tekton-catalog/task-sast-snyk-check-oci-ta:0.1@sha256:ed71e9eb49b19f01ef2918814547b52d026bf8b6120b61eb44ffce9fa4bf483c
           - name: kind
             value: task
         resolver: bundles
@@ -628,9 +466,6 @@ spec:
           operator: in
           values:
             - "false"
-      workspaces:
-        - name: workspace
-          workspace: workspace-amd64
     - name: clamav-scan
       params:
         - name: image-digest
@@ -638,13 +473,13 @@ spec:
         - name: image-url
           value: $(tasks.build-container.results.IMAGE_URL)
       runAfter:
-        - build-container-amd64
+        - build-container
       taskRef:
         params:
           - name: name
             value: clamav-scan
           - name: bundle
-            value: quay.io/redhat-appstudio-tekton-catalog/task-clamav-scan:0.1@sha256:5dbe6c646c3502ddc7fbe6016b8584bed6ce3ab7028b0c405ebaabc7e6e9e64c
+            value: quay.io/konflux-ci/tekton-catalog/task-clamav-scan:0.1@sha256:ee0a3a13bc62b4f5cbd3d6adbe351bb414bf4d3b0d8d8d1829878103cfbe2656
           - name: kind
             value: task
         resolver: bundles
@@ -653,47 +488,6 @@ spec:
           operator: in
           values:
             - "false"
-    - name: sbom-json-check
-      params:
-        - name: IMAGE_URL
-          value: $(tasks.build-container.results.IMAGE_URL)
-        - name: IMAGE_DIGEST
-          value: $(tasks.build-container.results.IMAGE_DIGEST)
-      runAfter:
-        - build-container-amd64
-      taskRef:
-        params:
-          - name: name
-            value: sbom-json-check
-          - name: bundle
-            value: quay.io/redhat-appstudio-tekton-catalog/task-sbom-json-check:0.1@sha256:f9cc253c3a07594bfb51e09c78b46598591cb353e19b16ef514f8312a8b0bada
-          - name: kind
-            value: task
-        resolver: bundles
-      when:
-        - input: $(params.skip-checks)
-          operator: in
-          values:
-            - "false"
-    - name: apply-tags
-      params:
-        - name: IMAGE
-          value: $(tasks.build-container.results.IMAGE_URL)
-      runAfter:
-        - build-container
-      taskRef:
-        params:
-          - name: name
-            value: apply-tags
-          - name: bundle
-            value: quay.io/redhat-appstudio-tekton-catalog/task-apply-tags:0.1@sha256:29add9a49a2281a3755a9b580d2b9c5cb110231b14cccf8ade2fd7895a9b4b4a
-          - name: kind
-            value: task
-        resolver: bundles
   workspaces:
-    - name: workspace-amd64
-    - name: workspace-arm64
-    - name: workspace-ppc64le
-    - name: workspace-s390x
     - name: git-auth
       optional: true
