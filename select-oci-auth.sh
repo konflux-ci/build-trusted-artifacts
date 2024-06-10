@@ -23,8 +23,11 @@ original_ref="$1"
 # Remove digest from image reference
 ref="${original_ref/@*}"
 
-# Remove tag from image reference while making sure optional registry port is taken into account
+# Remove tag from image reference
 ref="$(echo -n $ref | sed 's_/\(.*\):\(.*\)_/\1_g')"
+
+# Remove any optional port reference
+ref="$(echo -n $ref | sed -E 's/(.*)(:[0-9]+)(\/.*)/\1\3/')"
 
 registry="${ref/\/*}"
 
