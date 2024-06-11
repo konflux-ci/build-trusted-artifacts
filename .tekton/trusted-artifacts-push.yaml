@@ -7,6 +7,7 @@ metadata:
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
     pipelinesascode.tekton.dev/max-keep-runs: '3'
     pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch == "main"
+    pipelinesascode.tekton.dev/pipeline: ".tekton/build-pipeline.yaml"
   labels:
     appstudio.openshift.io/application: trusted-artifacts
     appstudio.openshift.io/component: trusted-artifacts
@@ -30,38 +31,6 @@ spec:
   pipelineRef:
     name: build-pipeline
   workspaces:
-    - name: workspace-amd64
-      volumeClaimTemplate:
-        spec:
-          accessModes:
-            - ReadWriteOnce
-          resources:
-            requests:
-              storage: 1Gi
-    - name: workspace-arm64
-      volumeClaimTemplate:
-        spec:
-          accessModes:
-            - ReadWriteOnce
-          resources:
-            requests:
-              storage: 1Gi
-    - name: workspace-ppc64le
-      volumeClaimTemplate:
-        spec:
-          accessModes:
-            - ReadWriteOnce
-          resources:
-            requests:
-              storage: 1Gi
-    - name: workspace-s390x
-      volumeClaimTemplate:
-        spec:
-          accessModes:
-            - ReadWriteOnce
-          resources:
-            requests:
-              storage: 1Gi
     - name: git-auth
       secret:
         secretName: '{{ git_auth_secret }}'
