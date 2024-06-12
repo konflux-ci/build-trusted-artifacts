@@ -64,6 +64,12 @@ repo="$(echo -n $store | sed 's_/\(.*\):\(.*\)_/\1_g')"
 for artifact_pair in "${artifact_pairs[@]}"; do
     result_path="${artifact_pair/=*}"
     path="${artifact_pair/*=}"
+
+    if [ -f "${path}/.skip-trusted-artifacts" ]; then
+      echo WARN: found skip file in "${path}"
+      continue
+    fi
+
     artifact_name="$(basename ${result_path})"
 
     archive="${archive_dir}/${artifact_name}"
@@ -105,12 +111,14 @@ if [[ -n  "${IMAGE_EXPIRES_AFTER:-}" ]]; then
     config="${config_file}:application/vnd.oci.image.config.v1+json"
 fi
 
-# read in any oras options
-source oras_opts.sh
+if [ ${#artifacts[@]} != 0 ]; then
+    # read in any oras options
+    source oras_opts.sh
 
-pushd "${archive_dir}" > /dev/null
-oras push "${oras_opts[@]}" --registry-config <(select-oci-auth.sh ${repo}) "${store}" --config="${config:-}" \
-    "${artifacts[@]}"
-popd > /dev/null
+    pushd "${archive_dir}" > /dev/null
+    oras push "${oras_opts[@]}" --registry-config <(select-oci-auth.sh ${repo}) "${store}" --config="${config:-}" \
+        "${artifacts[@]}"
+    popd > /dev/null
 
-echo 'Artifacts created'
+    echo 'Artifacts created'
+fi
