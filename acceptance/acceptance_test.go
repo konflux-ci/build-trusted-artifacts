@@ -236,7 +236,7 @@ func createdArchiveIsEmpty(ctx context.Context) (context.Context, error) {
 		return ctx, fmt.Errorf("createdArchiveIsEmpty no test state: %w", err)
 	}
 
-	// The use-oci.sh script fetches the arvhive and outputs to stdout,
+	// The use-oci.sh script fetches the archive and outputs to stdout,
 	// so all we can do is check the restored dir for contents. We can also
 	// assume that since the extraction function succeeded, that the files,
 	// if any exist are restored.
