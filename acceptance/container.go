@@ -135,11 +135,7 @@ func cleanupContainer(ctx context.Context, containerID string) error {
 	hostBinds := containerJSON.HostConfig.Binds
 	// Remove bind mounts
 	for _, bind := range hostBinds {
-		paths := strings.Split(bind, ":")
-		if len(paths) != 2 {
-			return fmt.Errorf("invalid bind mount specification: %s", bind)
-		}
-		hostPath := paths[0]
+		hostPath, _, _ := strings.Cut(bind, ":")
 		if err := os.RemoveAll(hostPath); err != nil {
 			return fmt.Errorf("removing bind mount %s: %w", hostPath, err)
 		}
