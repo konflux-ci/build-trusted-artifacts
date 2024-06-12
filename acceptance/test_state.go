@@ -72,11 +72,5 @@ func (ts *testState) forMount(mountDir string) testState {
 }
 
 func (ts *testState) teardown() error {
-	var err error
-
-	if ts.contextDir != "" {
-		err = os.RemoveAll(ts.contextDir)
-	}
-
-	return err
+	return os.RemoveAll(ts.contextDir)
 }
