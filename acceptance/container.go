@@ -24,11 +24,13 @@ import (
 
 var containerClient *client.Client
 
+type contextKey string
+
 const (
 	containerImage    = "local-build-trusted-artifacts:acceptance"
 	waitTimeout       = 1 * time.Minute
-	environmentKey    = "env"
-	logsKey           = "logs"
+	environmentKey    = contextKey("env")
+	logsKey           = contextKey("logs")
 	networkName       = "trusted-artifacts-network"
 	registryHost      = "trusted-artifacts-registry"
 	artifactContainer = "trusted-artifacts"

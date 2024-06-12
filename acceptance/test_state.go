@@ -12,11 +12,10 @@ type testState struct {
 	contextDir string
 }
 
-// Used to set/get state from a context.
-type testStateKey struct{}
+const testStateKey = contextKey("test-state")
 
 func getTestState(ctx context.Context) (testState, error) {
-	ts, ok := ctx.Value(testStateKey{}).(testState)
+	ts, ok := ctx.Value(testStateKey).(testState)
 	if !ok {
 		return testState{}, errors.New("test state not set")
 	}
@@ -24,7 +23,7 @@ func getTestState(ctx context.Context) (testState, error) {
 }
 
 func setTestState(ctx context.Context, ts testState) context.Context {
-	return context.WithValue(ctx, testStateKey{}, ts)
+	return context.WithValue(ctx, testStateKey, ts)
 }
 
 func newTestState(contextDir string) (testState, error) {

@@ -14,7 +14,7 @@ import (
 
 const mountedPath = "/data"
 
-const testRegistryID = "registryID"
+const testRegistryKey = contextKey("test-registry")
 
 func TestFeatures(t *testing.T) {
 	suite := godog.TestSuite{
@@ -87,14 +87,14 @@ func setupScenario(ctx context.Context, sc *godog.Scenario) (context.Context, er
 	if err != nil {
 		return ctx, fmt.Errorf("setting up scenario: %w", err)
 	}
-	ctx = context.WithValue(ctx, testRegistryID, registryID)
+	ctx = context.WithValue(ctx, testRegistryKey, registryID)
 
 	return setTestState(ctx, ts), nil
 }
 
 func teardownScenario(ctx context.Context, sc *godog.Scenario, _ error) (context.Context, error) {
 	// Purposely ignore errors here to prevent a teardown error to mask a test error.
-	if registryID, ok := ctx.Value(testRegistryID).(string); ok {
+	if registryID, ok := ctx.Value(testRegistryKey).(string); ok {
 		cleanupContainer(ctx, registryID)
 	}
 
