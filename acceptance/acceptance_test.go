@@ -345,7 +345,7 @@ func theLogsContainWords(ctx context.Context, expected string) (context.Context,
 	logs := ctx.Value(logsKey).(string)
 
 	for _, keyword := range strings.Fields(expected) {
-		if strings.Index(logs, keyword) == -1 {
+		if !strings.Contains(logs, keyword) {
 			return ctx, fmt.Errorf("logs do not contain the keyword: %q", keyword)
 		}
 	}
