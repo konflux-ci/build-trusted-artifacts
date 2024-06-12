@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -117,6 +118,30 @@ func runRegistry(ctx context.Context, binds []string, certs, key string) (string
 
 	if err := containerClient.ContainerStart(ctx, cont.ID, container.StartOptions{}); err != nil {
 		return "", fmt.Errorf("starting container %s: %w", cont.ID, err)
+	}
+
+	ctxWait, cancel := context.WithTimeout(ctx, waitTimeout)
+	defer cancel()
+
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.TLSClientConfig.InsecureSkipVerify = true
+	client := http.Client{
+		Transport: transport,
+	}
+
+	for {
+		container, err := containerClient.ContainerInspect(ctxWait, cont.ID)
+		if err != nil {
+			return "", fmt.Errorf("inspecting container %s: %w", cont.ID, err)
+		}
+
+		if !container.State.Running {
+			continue
+		}
+
+		if resp, err := client.Head(fmt.Sprintf("https://localhost:%s", registryPort)); err == nil && resp.StatusCode == http.StatusOK {
+			break
+		}
 	}
 
 	return cont.ID, nil
