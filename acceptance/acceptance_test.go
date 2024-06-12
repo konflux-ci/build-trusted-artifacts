@@ -12,7 +12,6 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-const emptyFilePath = "sha256-85cea451eec057fa7e734548ca3ba6d779ed5836a3f9de14b8394575ef0d7d8e.tar.gz"
 const mountedPath = "/data"
 
 const testRegistryID = "registryID"
