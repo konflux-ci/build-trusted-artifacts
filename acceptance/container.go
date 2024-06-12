@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -24,11 +25,13 @@ import (
 
 var containerClient *client.Client
 
+type contextKey string
+
 const (
 	containerImage    = "local-build-trusted-artifacts:acceptance"
 	waitTimeout       = 1 * time.Minute
-	environmentKey    = "env"
-	logsKey           = "logs"
+	environmentKey    = contextKey("env")
+	logsKey           = contextKey("logs")
 	networkName       = "trusted-artifacts-network"
 	registryHost      = "trusted-artifacts-registry"
 	artifactContainer = "trusted-artifacts"
@@ -117,6 +120,30 @@ func runRegistry(ctx context.Context, binds []string, certs, key string) (string
 		return "", fmt.Errorf("starting container %s: %w", cont.ID, err)
 	}
 
+	ctxWait, cancel := context.WithTimeout(ctx, waitTimeout)
+	defer cancel()
+
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.TLSClientConfig.InsecureSkipVerify = true
+	client := http.Client{
+		Transport: transport,
+	}
+
+	for {
+		container, err := containerClient.ContainerInspect(ctxWait, cont.ID)
+		if err != nil {
+			return "", fmt.Errorf("inspecting container %s: %w", cont.ID, err)
+		}
+
+		if !container.State.Running {
+			continue
+		}
+
+		if resp, err := client.Head(fmt.Sprintf("https://localhost:%s", registryPort)); err == nil && resp.StatusCode == http.StatusOK {
+			break
+		}
+	}
+
 	return cont.ID, nil
 }
 
@@ -135,11 +162,7 @@ func cleanupContainer(ctx context.Context, containerID string) error {
 	hostBinds := containerJSON.HostConfig.Binds
 	// Remove bind mounts
 	for _, bind := range hostBinds {
-		paths := strings.Split(bind, ":")
-		if len(paths) != 2 {
-			return fmt.Errorf("invalid bind mount specification: %s", bind)
-		}
-		hostPath := paths[0]
+		hostPath, _, _ := strings.Cut(bind, ":")
 		if err := os.RemoveAll(hostPath); err != nil {
 			return fmt.Errorf("removing bind mount %s: %w", hostPath, err)
 		}

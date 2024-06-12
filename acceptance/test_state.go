@@ -10,16 +10,12 @@ import (
 
 type testState struct {
 	contextDir string
-	certs      string
 }
 
-const certs = "certs"
-
-// Used to set/get state from a context.
-type testStateKey struct{}
+const testStateKey = contextKey("test-state")
 
 func getTestState(ctx context.Context) (testState, error) {
-	ts, ok := ctx.Value(testStateKey{}).(testState)
+	ts, ok := ctx.Value(testStateKey).(testState)
 	if !ok {
 		return testState{}, errors.New("test state not set")
 	}
@@ -27,7 +23,7 @@ func getTestState(ctx context.Context) (testState, error) {
 }
 
 func setTestState(ctx context.Context, ts testState) context.Context {
-	return context.WithValue(ctx, testStateKey{}, ts)
+	return context.WithValue(ctx, testStateKey, ts)
 }
 
 func newTestState(contextDir string) (testState, error) {
@@ -36,7 +32,7 @@ func newTestState(contextDir string) (testState, error) {
 }
 
 func (ts *testState) mkdirs() error {
-	for _, d := range []string{ts.sourceDir(), ts.artifactsDir(), ts.resultsDir(), ts.restoredDir(), ts.certsDir()} {
+	for _, d := range []string{ts.sourceDir(), ts.resultsDir(), ts.restoredDir(), ts.certsDir()} {
 		if err := os.MkdirAll(d, 0700); err != nil {
 			return fmt.Errorf("newTestState creating %s: %w", d, err)
 		}
@@ -46,10 +42,6 @@ func (ts *testState) mkdirs() error {
 
 func (ts *testState) sourceDir() string {
 	return filepath.Join(ts.contextDir, "source")
-}
-
-func (ts *testState) artifactsDir() string {
-	return filepath.Join(ts.contextDir, "artifacts")
 }
 
 func (ts *testState) resultsDir() string {
@@ -79,11 +71,5 @@ func (ts *testState) forMount(mountDir string) testState {
 }
 
 func (ts *testState) teardown() error {
-	var err error
-
-	if ts.contextDir != "" {
-		err = os.RemoveAll(ts.contextDir)
-	}
-
-	return err
+	return os.RemoveAll(ts.contextDir)
 }

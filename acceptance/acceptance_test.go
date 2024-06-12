@@ -12,10 +12,9 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-const emptyFilePath = "sha256-85cea451eec057fa7e734548ca3ba6d779ed5836a3f9de14b8394575ef0d7d8e.tar.gz"
 const mountedPath = "/data"
 
-const testRegistryID = "registryID"
+const testRegistryKey = contextKey("test-registry")
 
 func TestFeatures(t *testing.T) {
 	suite := godog.TestSuite{
@@ -40,12 +39,11 @@ func initializeScenario(sc *godog.ScenarioContext) {
 
 	sc.Step(`^a source file "([^"]*)":$`, createSourceFile)
 	sc.Step(`^artifact "([^"]*)" is created for (?:file|path) "([^"]*)"$`, createArtifact)
-	sc.Step(`^artifact "([^"]*)" is extracted for file "([^"]*)"$`, useArtifactForFile)
 	sc.Step(`^the restored file "([^"]*)" should match its source$`, restoredFileShouldMatchSource)
-	sc.Step(`^the created archive is empty$`, createdArchiveIsEmpty)
+	sc.Step(`^there are no restored files$`, noRestoredFiles)
 	sc.Step(`^files:$`, createFiles)
 	sc.Step(`^artifact "([^"]*)" contains:$`, artifactContains)
-	sc.Step(`^artifact "([^"]*)" is used$`, artifactIsUsed)
+	sc.Step(`^artifact "([^"]*)" is used$`, useArtifact)
 	sc.Step(`^running in debug mode$`, runningInDebugMode)
 	sc.Step(`^the logs contain words: "([^"]*)"$`, theLogsContainWords)
 }
@@ -63,7 +61,7 @@ func initializeTestSuite(suite *godog.TestSuiteContext) {
 }
 
 func setupScenario(ctx context.Context, sc *godog.Scenario) (context.Context, error) {
-	tempDir, err := os.MkdirTemp("", "ec-policies-")
+	tempDir, err := os.MkdirTemp("", "ta-acceptance-")
 	if err != nil {
 		return ctx, fmt.Errorf("setting up scenario - mktemp dir: %w", err)
 	}
@@ -88,14 +86,14 @@ func setupScenario(ctx context.Context, sc *godog.Scenario) (context.Context, er
 	if err != nil {
 		return ctx, fmt.Errorf("setting up scenario: %w", err)
 	}
-	ctx = context.WithValue(ctx, testRegistryID, registryID)
+	ctx = context.WithValue(ctx, testRegistryKey, registryID)
 
 	return setTestState(ctx, ts), nil
 }
 
 func teardownScenario(ctx context.Context, sc *godog.Scenario, _ error) (context.Context, error) {
 	// Purposely ignore errors here to prevent a teardown error to mask a test error.
-	if registryID, ok := ctx.Value(testRegistryID).(string); ok {
+	if registryID, ok := ctx.Value(testRegistryKey).(string); ok {
 		cleanupContainer(ctx, registryID)
 	}
 
@@ -141,17 +139,17 @@ func createArtifact(ctx context.Context, result string, path string) (context.Co
 		fmt.Sprintf("%s=%s", resultFile, sourceFile),
 	}
 
-	if ctx, err := runContainer(ctx, cmd, binds, mountedTS.domainCert()); err != nil {
+	if ctx, err = runContainer(ctx, cmd, binds, mountedTS.domainCert()); err != nil {
 		return ctx, fmt.Errorf("creating artifact: %w", err)
 	}
 
 	return ctx, nil
 }
 
-func useArtifactForFile(ctx context.Context, result, path string) (context.Context, error) {
+func useArtifact(ctx context.Context, result string) (context.Context, error) {
 	ts, err := getTestState(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("useArtifactForFile get test state: %w", err)
+		return nil, fmt.Errorf("useArtifact get test state: %w", err)
 	}
 
 	binds, err := containerBinds(ts)
@@ -231,13 +229,13 @@ func restoredFileShouldMatchSource(ctx context.Context, fname string) (context.C
 	return ctx, nil
 }
 
-func createdArchiveIsEmpty(ctx context.Context) (context.Context, error) {
+func noRestoredFiles(ctx context.Context) (context.Context, error) {
 	ts, err := getTestState(ctx)
 	if err != nil {
 		return ctx, fmt.Errorf("createdArchiveIsEmpty no test state: %w", err)
 	}
 
-	// The use-oci.sh script fetches the arvhive and outputs to stdout,
+	// The use-oci.sh script fetches the archive and outputs to stdout,
 	// so all we can do is check the restored dir for contents. We can also
 	// assume that since the extraction function succeeded, that the files,
 	// if any exist are restored.
@@ -334,10 +332,6 @@ func artifactContains(ctx context.Context, result string, files *godog.Table) (c
 	return ctx, nil
 }
 
-func artifactIsUsed(ctx context.Context, name string) (context.Context, error) {
-	return useArtifactForFile(ctx, name, "")
-}
-
 func runningInDebugMode(ctx context.Context) (context.Context, error) {
 	return context.WithValue(ctx, environmentKey, []string{"DEBUG=1"}), nil
 }
@@ -346,7 +340,7 @@ func theLogsContainWords(ctx context.Context, expected string) (context.Context,
 	logs := ctx.Value(logsKey).(string)
 
 	for _, keyword := range strings.Fields(expected) {
-		if strings.Index(logs, keyword) == -1 {
+		if !strings.Contains(logs, keyword) {
 			return ctx, fmt.Errorf("logs do not contain the keyword: %q", keyword)
 		}
 	}
