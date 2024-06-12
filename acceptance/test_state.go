@@ -33,7 +33,7 @@ func newTestState(contextDir string) (testState, error) {
 }
 
 func (ts *testState) mkdirs() error {
-	for _, d := range []string{ts.sourceDir(), ts.artifactsDir(), ts.resultsDir(), ts.restoredDir(), ts.certsDir()} {
+	for _, d := range []string{ts.sourceDir(), ts.resultsDir(), ts.restoredDir(), ts.certsDir()} {
 		if err := os.MkdirAll(d, 0700); err != nil {
 			return fmt.Errorf("newTestState creating %s: %w", d, err)
 		}
@@ -43,10 +43,6 @@ func (ts *testState) mkdirs() error {
 
 func (ts *testState) sourceDir() string {
 	return filepath.Join(ts.contextDir, "source")
-}
-
-func (ts *testState) artifactsDir() string {
-	return filepath.Join(ts.contextDir, "artifacts")
 }
 
 func (ts *testState) resultsDir() string {
