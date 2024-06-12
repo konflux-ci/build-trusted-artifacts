@@ -62,7 +62,7 @@ func initializeTestSuite(suite *godog.TestSuiteContext) {
 }
 
 func setupScenario(ctx context.Context, sc *godog.Scenario) (context.Context, error) {
-	tempDir, err := os.MkdirTemp("", "ec-policies-")
+	tempDir, err := os.MkdirTemp("", "ta-acceptance-")
 	if err != nil {
 		return ctx, fmt.Errorf("setting up scenario - mktemp dir: %w", err)
 	}
