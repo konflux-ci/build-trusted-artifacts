@@ -39,12 +39,11 @@ func initializeScenario(sc *godog.ScenarioContext) {
 
 	sc.Step(`^a source file "([^"]*)":$`, createSourceFile)
 	sc.Step(`^artifact "([^"]*)" is created for (?:file|path) "([^"]*)"$`, createArtifact)
-	sc.Step(`^artifact "([^"]*)" is extracted for file "([^"]*)"$`, useArtifactForFile)
 	sc.Step(`^the restored file "([^"]*)" should match its source$`, restoredFileShouldMatchSource)
-	sc.Step(`^the created archive is empty$`, createdArchiveIsEmpty)
+	sc.Step(`^there are no restored files$`, noRestoredFiles)
 	sc.Step(`^files:$`, createFiles)
 	sc.Step(`^artifact "([^"]*)" contains:$`, artifactContains)
-	sc.Step(`^artifact "([^"]*)" is used$`, artifactIsUsed)
+	sc.Step(`^artifact "([^"]*)" is used$`, useArtifact)
 	sc.Step(`^running in debug mode$`, runningInDebugMode)
 	sc.Step(`^the logs contain words: "([^"]*)"$`, theLogsContainWords)
 }
@@ -147,10 +146,10 @@ func createArtifact(ctx context.Context, result string, path string) (context.Co
 	return ctx, nil
 }
 
-func useArtifactForFile(ctx context.Context, result, path string) (context.Context, error) {
+func useArtifact(ctx context.Context, result string) (context.Context, error) {
 	ts, err := getTestState(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("useArtifactForFile get test state: %w", err)
+		return nil, fmt.Errorf("useArtifact get test state: %w", err)
 	}
 
 	binds, err := containerBinds(ts)
@@ -230,7 +229,7 @@ func restoredFileShouldMatchSource(ctx context.Context, fname string) (context.C
 	return ctx, nil
 }
 
-func createdArchiveIsEmpty(ctx context.Context) (context.Context, error) {
+func noRestoredFiles(ctx context.Context) (context.Context, error) {
 	ts, err := getTestState(ctx)
 	if err != nil {
 		return ctx, fmt.Errorf("createdArchiveIsEmpty no test state: %w", err)
@@ -331,10 +330,6 @@ func artifactContains(ctx context.Context, result string, files *godog.Table) (c
 	}
 
 	return ctx, nil
-}
-
-func artifactIsUsed(ctx context.Context, name string) (context.Context, error) {
-	return useArtifactForFile(ctx, name, "")
 }
 
 func runningInDebugMode(ctx context.Context) (context.Context, error) {
