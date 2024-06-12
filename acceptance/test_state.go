@@ -10,10 +10,7 @@ import (
 
 type testState struct {
 	contextDir string
-	certs      string
 }
-
-const certs = "certs"
 
 // Used to set/get state from a context.
 type testStateKey struct{}
