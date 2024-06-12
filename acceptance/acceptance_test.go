@@ -140,7 +140,7 @@ func createArtifact(ctx context.Context, result string, path string) (context.Co
 		fmt.Sprintf("%s=%s", resultFile, sourceFile),
 	}
 
-	if ctx, err := runContainer(ctx, cmd, binds, mountedTS.domainCert()); err != nil {
+	if ctx, err = runContainer(ctx, cmd, binds, mountedTS.domainCert()); err != nil {
 		return ctx, fmt.Errorf("creating artifact: %w", err)
 	}
 
