@@ -28,9 +28,11 @@ ref="$(echo -n $ref | sed 's_/\(.*\):\(.*\)_/\1_g')"
 
 registry="${ref/\/*}"
 
-if [[ -f ~/.docker/config.json ]]; then
+AUTHFILE="${AUTHFILE:-$HOME/.docker/config.json}"
+
+if [[ -f $AUTHFILE ]]; then
     while true; do
-        token=$(< ~/.docker/config.json jq -c '.auths["'$ref'"]')
+        token=$(< "${AUTHFILE}" jq -c '.auths["'$ref'"]')
         if [[ "$token" != "null" ]]; then
             >&2 echo "Using token for $ref"
             echo -n '{"auths": {"'$registry'": '$token'}}' | jq -c .

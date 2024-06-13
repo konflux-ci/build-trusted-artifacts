@@ -29,5 +29,14 @@ jobs:
         cache: true
         cache-dependency-path: acceptance/go.sum
 
+    - name: Install shellspec
+      # https://github.com/actions/runner-images/blob/main/images/ubuntu/Ubuntu2204-Readme.md#homebrew-note
+      run: |
+        eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+        brew tap shellspec/shellspec
+        brew install shellspec
+
     - name: Run checks
-      run: make test
+      run: |
+        eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+        make test
