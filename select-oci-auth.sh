@@ -1,5 +1,6 @@
 #!/bin/bash
-# Selects the expected token from ~/.docker/config.json given an image reference.
+# Selects the expected token from ~/.docker/config.json given an image reference. Default
+# location of ~/.docker/config.json may be overriden by setting AUTHFILE
 #
 # The format of ~/.docker/config.json is not well defined. Some clients allow the specification of
 # repository specific tokens, e.g. buildah and kubernetes, while others only allow registry specific
@@ -17,6 +18,11 @@
 set -o errexit
 set -o nounset
 set -o pipefail
+
+if [ -z "${1:-}" ]; then
+   >&2 echo "Specify the image reference to match"
+   exit 1
+fi
 
 original_ref="$1"
 
