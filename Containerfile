@@ -10,7 +10,7 @@ COPY entrypoint.sh /usr/local/bin/entrypoint
 COPY LICENSE /licenses/LICENSE
 
 FROM registry.access.redhat.com/ubi9/ubi-minimal:latest as oras
-ARG ORAS_VERSION=1.2.0-rc.1
+ARG ORAS_VERSION=1.2.0
 ARG TARGETARCH
 ADD https://github.com/oras-project/oras/releases/download/v${ORAS_VERSION}/oras_${ORAS_VERSION}_linux_${TARGETARCH}.tar.gz /tmp
 RUN microdnf install --assumeyes tar gzip && tar -x -C /tmp -f /tmp/oras_${ORAS_VERSION}_linux_${TARGETARCH}.tar.gz
