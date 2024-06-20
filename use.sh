@@ -52,6 +52,11 @@ for artifact_pair in "${artifact_pairs[@]}"; do
       exit 1
     fi
 
+    if [ -f "${destination}/.skip-trusted-artifacts" ]; then
+      echo WARN: found skip file in "${destination}"
+      continue
+    fi
+
     type="${uri/:*}"
 
     if [ "${type}" != "file" ]; then

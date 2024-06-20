@@ -3,13 +3,19 @@ package main
 import (
 	"context"
 	"fmt"
+	"io/fs"
+	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
 	"github.com/cucumber/godog"
+	messages "github.com/cucumber/messages/go/v21"
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/google/go-containerregistry/pkg/v1/remote"
 )
 
 const mountedPath = "/data"
@@ -46,6 +52,9 @@ func initializeScenario(sc *godog.ScenarioContext) {
 	sc.Step(`^artifact "([^"]*)" is used$`, useArtifact)
 	sc.Step(`^running in debug mode$`, runningInDebugMode)
 	sc.Step(`^the logs contain words: "([^"]*)"$`, theLogsContainWords)
+	sc.Step(`^the logs contain line: "([^"]*)"$`, theLogsContainLine)
+	sc.Step(`^the artifact creation for path "([^"]*)" is skipped$`, artifactCreationForPathIsSkipped)
+	sc.Step(`^an dummy artifact "([^"]*)"$`, createDummyArtifact)
 }
 
 func initializeTestSuite(suite *godog.TestSuiteContext) {
@@ -244,8 +253,12 @@ func noRestoredFiles(ctx context.Context) (context.Context, error) {
 		return ctx, err
 	}
 
+	entries = slices.DeleteFunc(entries, func(f fs.DirEntry) bool {
+		return f.Name() == ".skip-trusted-artifacts"
+	})
+
 	if len(entries) != 0 {
-		return ctx, fmt.Errorf("there are files in the restored dir: %q, %v", ts.restoredDir(), err)
+		return ctx, fmt.Errorf("there are files in the restored dir: %q", ts.restoredDir())
 	}
 
 	return ctx, nil
@@ -341,9 +354,70 @@ func theLogsContainWords(ctx context.Context, expected string) (context.Context,
 
 	for _, keyword := range strings.Fields(expected) {
 		if !strings.Contains(logs, keyword) {
-			return ctx, fmt.Errorf("logs do not contain the keyword: %q", keyword)
+			return ctx, fmt.Errorf("logs do not contain the keyword: %q\n%s", keyword, logs)
 		}
 	}
 
 	return ctx, nil
+}
+
+func theLogsContainLine(ctx context.Context, line string) (context.Context, error) {
+	logs := ctx.Value(logsKey).(string)
+
+	if !strings.Contains(logs, line) {
+		return ctx, fmt.Errorf("logs do not contain the line: %q\n%s", line, logs)
+	}
+
+	return ctx, nil
+}
+
+func artifactCreationForPathIsSkipped(ctx context.Context, path string) (context.Context, error) {
+	registry, err := name.NewRegistry(fmt.Sprintf("0.0.0.0:%s", registryPort))
+	if err != nil {
+		return ctx, err
+	}
+
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.TLSClientConfig.InsecureSkipVerify = true
+	catalog, err := remote.Catalog(ctx, registry, remote.WithTransport(transport))
+	if err != nil {
+		return ctx, err
+	}
+
+	if len(catalog) != 0 {
+		return ctx, fmt.Errorf("expected no artifacts created in the registry, found: %v", catalog)
+	}
+
+	return ctx, nil
+}
+
+func createDummyArtifact(ctx context.Context, name string) (context.Context, error) {
+	files := godog.Table{
+		Rows: []*messages.PickleTableRow{
+			{
+				Cells: []*messages.PickleTableCell{
+					{
+						Value: "path",
+					},
+					{
+						Value: "content",
+					},
+				},
+			},
+			{
+				Cells: []*messages.PickleTableCell{
+					{
+						Value: "dummy.txt",
+					},
+					{
+						Value: "dummy file",
+					},
+				},
+			},
+		},
+	}
+	if ctx, err := createFiles(ctx, &files); err != nil {
+		return ctx, err
+	}
+	return createArtifact(ctx, "DUMMY", "dummy")
 }

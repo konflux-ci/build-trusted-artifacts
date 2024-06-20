@@ -29,3 +29,21 @@ Feature: Artifacts
         | a/a1.txt    | A one   |
         | a/a2.txt    | A one   |
         | c/d/e/f.txt | File    |
+
+    Scenario: Skipping creation
+       Given files:
+        | path                           | content |
+        | source/source.file             | source  |
+        | source/.skip-trusted-artifacts |         |
+        When artifact "SOURCES" is created for path "/source"
+        Then the artifact creation for path "/source" is skipped
+         And the logs contain line: "WARN: found skip file"
+
+    Scenario: Skipping use
+       Given files:
+        | path                                | content |
+        | ../restored/.skip-trusted-artifacts |         |
+         And an dummy artifact "DUMMY"
+        When artifact "DUMMY" is used
+         And the logs contain line: "WARN: found skip file"
+        Then there are no restored files

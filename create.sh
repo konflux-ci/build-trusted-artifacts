@@ -40,6 +40,11 @@ for artifact_pair in "${artifact_pairs[@]}"; do
     result_path="${artifact_pair/=*}"
     path="${artifact_pair/*=}"
 
+    if [ -f "${path}/.skip-trusted-artifacts" ]; then
+      echo WARN: found skip file in "${path}"
+      continue
+    fi
+
     archive="$(mktemp).tar.gz"
 
     log "creating tar archive %s with files from %s" "${archive}" "${path}"
