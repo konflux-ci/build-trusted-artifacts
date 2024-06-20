@@ -111,3 +111,9 @@ podman run -v $(pwd):/export/run -v ~/.docker/config.json:/home/notroot/.docker/
 # unpacking the artifact
 podman run -v ~/.docker/config.json:/home/notroot/.docker/config.json:ro -it quay.io/jstuart/build-trusted-artifacts use "$(cat result)=/var/tmp"
 ```
+
+## Options
+
+* Set `AUTHFILE` to point to an alternative location for `$HOME/.docker/config.json`.
+* Set `DEBUG` so that debug logging will be output.
+* `ORAS_OPTIONS` may be set to a list of space separated extra flags to pass to oras (e.g. `--insecure`).
