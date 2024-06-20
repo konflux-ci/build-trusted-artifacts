@@ -39,7 +39,7 @@ AUTHFILE="${AUTHFILE:-$HOME/.docker/config.json}"
 if [[ -f $AUTHFILE ]]; then
     while true; do
         token=$(< "${AUTHFILE}" jq -c '.auths["'$ref'"]')
-        if [[ "$token" != "null" ]]; then
+        if [[ "$token" != "null" && "$token" != "" ]]; then
             >&2 echo "Using token for $ref"
             echo -n '{"auths": {"'$registry'": '$token'}}' | jq -c .
             exit 0

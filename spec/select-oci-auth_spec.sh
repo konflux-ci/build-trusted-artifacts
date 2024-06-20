@@ -89,9 +89,18 @@ Describe 'select-oci-auth.sh'
 
 End
 
-
 It 'missing parameter'
     When call ./select-oci-auth.sh
     The error should eq "Specify the image reference to match"
     The status should be failure
+End
+
+It 'missing-auth-file'
+    selectauth() {
+        AUTHFILE="$(mktemp --tmpdir build-trusted-artifacts.XXX)" ./select-oci-auth.sh "dummy"
+    }
+
+    When call selectauth
+    The output should eq '{"auths": {}}'
+    The error should include "Token not found"
 End
