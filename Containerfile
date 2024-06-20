@@ -30,7 +30,7 @@ COPY --from=files / /
 COPY --chown=0:0 --from=oras /tmp/oras /usr/local/bin/oras
 
 RUN microdnf update --assumeyes --nodocs --setopt=keepcache=0 && \
-    microdnf install --assumeyes --nodocs --setopt=keepcache=0 tar gzip time jq && \
+    microdnf install --assumeyes --nodocs --setopt=keepcache=0 tar gzip time jq findutils && \
     useradd --non-unique --uid 0 --gid 0 --shell /bin/bash notroot
 
 RUN oras version
