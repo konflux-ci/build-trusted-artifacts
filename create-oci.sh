@@ -19,15 +19,13 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-tar_opts=-mczf
+# using `-n` ensures gzip does not add a modification time to the output. This
+# helps in ensuring the archive digest is the same for the same content.
+tar_opts=(--create --use-compress-program='gzip -n' --file)
 if [[ -v DEBUG ]]; then
-  tar_opts=-mcvzf
+  tar_opts=(--verbose "${tar_opts[@]}")
   set -o xtrace
 fi
-
-# This ensures gzip does not add a modification time to the output. This helps in ensuring the
-# archive digest is the same for the same content.
-export GZIP=-n
 
 # contains {result path}={artifact source path} pairs
 artifact_pairs=()
@@ -78,13 +76,13 @@ for artifact_pair in "${artifact_pairs[@]}"; do
 
     if [ ! -r "${path}" ]; then
         # non-existent paths result in empty archives
-        tar "${tar_opts}" "${archive}" --files-from /dev/null
+        tar "${tar_opts[@]}" "${archive}" --files-from /dev/null
     elif [ -d "${path}" ]; then
         # archive the whole directory
-        tar "${tar_opts}" "${archive}" -C "${path}" .
+        tar "${tar_opts[@]}" "${archive}" --directory="${path}" .
     else
         # archive a single file
-        tar "${tar_opts}" "${archive}" -C "${path%/*}" "${path##*/}"
+        tar "${tar_opts[@]}" "${archive}" --directory="${path%/*}" "${path##*/}"
     fi
 
     sha256sum_output="$(sha256sum "${archive}")"
