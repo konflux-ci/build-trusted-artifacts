@@ -1,6 +1,6 @@
 # Trusted artifacts
 
-A trusted artifact a way to pass files between two Tekton Tasks without those
+A trusted artifact is a way to pass files between two Tekton Tasks without those
 files being clandestinely modified. This is done by tracking the digest of
 archived files.
 A Tekton Task creating a trusted artifact for later use needs to add a result
