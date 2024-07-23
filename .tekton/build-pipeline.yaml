@@ -351,8 +351,6 @@ spec:
       params:
         - name: BINARY_IMAGE
           value: $(params.output-image)
-        - name: BASE_IMAGES
-          value: $(tasks.build-container-amd64.results.BASE_IMAGES_DIGESTS)
         - name: SOURCE_ARTIFACT
           value: $(tasks.prefetch-dependencies.results.SOURCE_ARTIFACT)
         - name: CACHI2_ARTIFACT
@@ -382,8 +380,6 @@ spec:
         # TODO: This task does not yet support Image Indexes. Since all arches are built from the same
         # source (and Containerfile), we only need to run this check against one of the arches.
         # https://issues.redhat.com/browse/KFLUXBUGS-1316
-        - name: BASE_IMAGES_DIGESTS
-          value: $(tasks.build-container-amd64.results.BASE_IMAGES_DIGESTS)
         - name: IMAGE_URL
           value: $(tasks.build-container-amd64.results.IMAGE_URL)
         - name: IMAGE_DIGEST
