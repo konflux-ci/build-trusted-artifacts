@@ -7,7 +7,7 @@ spec:
     - name: show-sbom
       params:
         - name: IMAGE_URL
-          value: $(tasks.build-container-amd64.results.IMAGE_URL)
+          value: $(tasks.build-container.results.IMAGE_URL)
       taskRef:
         params:
           - name: name
@@ -381,9 +381,9 @@ spec:
         # source (and Containerfile), we only need to run this check against one of the arches.
         # https://issues.redhat.com/browse/KFLUXBUGS-1316
         - name: IMAGE_URL
-          value: $(tasks.build-container-amd64.results.IMAGE_URL)
+          value: $(tasks.build-container.results.IMAGE_URL)
         - name: IMAGE_DIGEST
-          value: $(tasks.build-container-amd64.results.IMAGE_DIGEST)
+          value: $(tasks.build-container.results.IMAGE_DIGEST)
       runAfter:
         - build-container
       taskRef:
