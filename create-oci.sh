@@ -4,6 +4,14 @@
 # The --store parameter is an image reference used to specify the repository, e.g.
 # registry.local/org/repo. If the image reference contains a tag, it is ignored.
 #
+# The --attach parameter is used to specify to use oras attach instead of oras push.
+#
+# The --oci-type-scope parameter is used to further define a scope for mediaType and artifactType
+# properties when attaching artifacts.
+#
+# The --no-tar parameter skips tarring steps. Since a single artifact needs to be uploaded,
+# this only supports single (or missing) files
+#
 # The --results parameter is unused. It is left here for compatibility with non-oci support.
 #
 # Positional parametes are artifact pairs. These are strings. Each contains two parts separated by
@@ -29,12 +37,28 @@ fi
 
 # contains {result path}={artifact source path} pairs
 artifact_pairs=()
+attach=""
+no_tar=""
+oci_type_scope=""
 
 while [[ $# -gt 0 ]]; do
     case $1 in
         --store)
         store="$2"
         shift
+        shift
+        ;;
+        --oci-type-scope)
+        oci_type_scope="$2"
+        shift
+        shift
+        ;;
+        --attach)
+        attach="true"
+        shift
+        ;;
+        --no-tar)
+        no_tar="true"
         shift
         ;;
         -*)
@@ -57,7 +81,8 @@ archive_dir="$(mktemp -d)"
 
 artifacts=()
 
-repo="$(echo -n $store | sed 's_/\(.*\):\(.*\)_/\1_g')"
+# Trim off digests and tags
+repo="$(echo -n $store | cut -d@ -f1 | cut -d: -f1)"
 
 for artifact_pair in "${artifact_pairs[@]}"; do
     result_path="${artifact_pair/=*}"
@@ -74,15 +99,31 @@ for artifact_pair in "${artifact_pairs[@]}"; do
 
     # log "creating tar archive %s with files from %s" "${archive}" "${path}"
 
-    if [ ! -r "${path}" ]; then
-        # non-existent paths result in empty archives
-        tar "${tar_opts[@]}" "${archive}" --files-from /dev/null
-    elif [ -d "${path}" ]; then
-        # archive the whole directory
-        tar "${tar_opts[@]}" "${archive}" --directory="${path}" .
+    if [ -z "${no_tar}" ]; then
+        if [ ! -r "${path}" ]; then
+            # non-existent paths result in empty archives
+            tar "${tar_opts[@]}" "${archive}" --files-from /dev/null
+        elif [ -d "${path}" ]; then
+            # archive the whole directory
+            tar "${tar_opts[@]}" "${archive}" --directory="${path}" .
+        else
+            # archive a single file
+            tar "${tar_opts[@]}" "${archive}" --directory="${path%/*}" "${path##*/}"
+        fi
     else
-        # archive a single file
-        tar "${tar_opts[@]}" "${archive}" --directory="${path%/*}" "${path##*/}"
+        artifact_name="$(basename ${path})"
+        archive="${archive_dir}/${artifact_name}"
+        if [ ! -r "${path}" ]; then
+            # non-existent paths result in empty files
+            touch "${archive}"
+        elif [ -d "${path}" ]; then
+            # directories cannot be uploaded without being tarred
+            echo WARN: Directories need to be tarred. Do not use the option "--no-tar"
+            continue
+        else
+            # archive a single file
+            cp ${path} ${archive}
+        fi
     fi
 
     sha256sum_output="$(sha256sum "${archive}")"
@@ -114,8 +155,31 @@ if [ ${#artifacts[@]} != 0 ]; then
     source oras_opts.sh
 
     pushd "${archive_dir}" > /dev/null
-    oras push "${oras_opts[@]}" --registry-config <(select-oci-auth.sh ${repo}) "${store}" --config="${config:-}" \
-        "${artifacts[@]}"
+    if [ -z "${attach}" ]; then
+        oras push "${oras_opts[@]}" --registry-config <(select-oci-auth.sh ${repo}) "${store}" --config="${config:-}" \
+            "${artifacts[@]}"
+    else
+        oci_artifact_type="application/vnd.konflux-ci.trusted-artifact"
+        if [ -n "${oci_type_scope}" ]; then
+            oci_artifact_type="${oci_artifact_type}.${oci_type_scope}"
+        fi
+        attached_artifacts=()
+        for artifact in "${artifacts[@]}"; do
+            file_base="${artifact%.*}"
+            file_extension="${artifact##*.}"
+            media_type_descriptor="${file_base}"
+            if [[ "${file_base}" != "${file_extension}" ]]; then
+                media_type_descriptor="${media_type_descriptor}+${file_extension}"
+            fi
+            echo "registering artifact:"
+            echo "${artifact}:${oci_artifact_type}.${media_type_descriptor}"
+            attached_artifacts+=("${artifact}:${oci_artifact_type}.${media_type_descriptor}")
+        done
+        oras attach "${oras_opts[@]}" --no-tty --registry-config <(select-oci-auth.sh ${repo}) --artifact-type "${oci_artifact_type}" \
+            --distribution-spec v1.1-referrers-api "${store}" "${attached_artifacts[@]}"
+        oras attach "${oras_opts[@]}" --no-tty --registry-config <(select-oci-auth.sh ${repo}) --artifact-type "${oci_artifact_type}" \
+            --distribution-spec v1.1-referrers-tag "${store}" "${attached_artifacts[@]}"
+    fi
     popd > /dev/null
 
     echo 'Artifacts created'
