@@ -94,28 +94,16 @@ for artifact_pair in "${artifact_pairs[@]}"; do
     echo Prepared artifact from "${path} (sha256:${digest})"
 done
 
-if [[ -n  "${IMAGE_EXPIRES_AFTER:-}" ]]; then
-    # If provided, oras requires the config file to be an existing file on disk. Using
-    # a here file, i.e. <(...), does not work.
-    config_file="$(mktemp)"
-    echo -n '{
-        "config": {
-            "Labels": {
-                "quay.expires-after": "'${IMAGE_EXPIRES_AFTER}'"
-            }
-        }
-    }' | jq . > "${config_file}"
-
-    config="${config_file}:application/vnd.oci.image.config.v1+json"
-fi
-
 if [ ${#artifacts[@]} != 0 ]; then
     # read in any oras options
     source oras_opts.sh
 
+    if [[ -n  "${IMAGE_EXPIRES_AFTER:-}" ]]; then
+        oras_opts+=("--annotation=quay.expires-after=${IMAGE_EXPIRES_AFTER}")
+    fi
+
     pushd "${archive_dir}" > /dev/null
-    oras push "${oras_opts[@]}" --registry-config <(select-oci-auth.sh ${repo}) "${store}" --config="${config:-}" \
-        "${artifacts[@]}"
+    oras push "${oras_opts[@]}" --registry-config <(select-oci-auth.sh ${repo}) "${store}" "${artifacts[@]}"
     popd > /dev/null
 
     echo 'Artifacts created'
