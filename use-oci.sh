@@ -64,6 +64,8 @@ for artifact_pair in "${artifact_pairs[@]}"; do
 
     mkdir -p "${destination}"
 
+    log "permissions of ${destination}: $(ls --directory --numeric-uid-gid "${destination}"), parent: $(ls --directory --numeric-uid-gid "${destination}/..")"
+
     type="${uri/:*}"
 
     if [ "${type}" != "oci" ]; then
