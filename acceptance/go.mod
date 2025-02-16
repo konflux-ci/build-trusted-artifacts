@@ -3,7 +3,8 @@ module github.com/enterprise-contract/build-trusted-artifacts/acceptance
 go 1.22.3
 
 require (
-	github.com/cucumber/godog v0.14.0
+	github.com/cucumber/godog v0.15.0
+	github.com/cucumber/messages/go/v21 v21.0.1
 	github.com/docker/docker v26.1.3+incompatible
 	github.com/docker/go-connections v0.5.0
 	github.com/google/go-cmp v0.6.0
@@ -18,7 +19,6 @@ require (
 	github.com/containerd/log v0.1.0 // indirect
 	github.com/containerd/stargz-snapshotter/estargz v0.14.3 // indirect
 	github.com/cucumber/gherkin/go/v26 v26.2.0 // indirect
-	github.com/cucumber/messages/go/v21 v21.0.1 // indirect
 	github.com/distribution/reference v0.6.0 // indirect
 	github.com/docker/cli v24.0.0+incompatible // indirect
 	github.com/docker/distribution v2.8.2+incompatible // indirect
