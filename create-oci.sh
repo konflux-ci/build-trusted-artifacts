@@ -22,7 +22,7 @@ set -o pipefail
 # using `-n` ensures gzip does not add a modification time to the output. This
 # helps in ensuring the archive digest is the same for the same content.
 tar_opts=(--create --use-compress-program='gzip -n' --file)
-if [[ -v DEBUG ]]; then
+if [[ ! -z "${DEBUG:-}" ]]; then
   tar_opts=(--verbose "${tar_opts[@]}")
   set -o xtrace
 fi

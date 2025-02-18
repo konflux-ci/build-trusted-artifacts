@@ -6,6 +6,6 @@ if [[ -v CA_FILE ]]; then
     oras_opts+=(--ca-file=${CA_FILE})
 fi
 
-if [[ -v DEBUG ]]; then
+if [[ ! -z "${DEBUG:-}" ]]; then
     oras_opts+=(--debug)
 fi

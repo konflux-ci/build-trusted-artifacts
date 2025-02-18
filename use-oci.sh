@@ -14,7 +14,7 @@ set -o nounset
 set -o pipefail
 
 tar_opts=-zxpf
-if [[ -v DEBUG ]]; then
+if [[ ! -z "${DEBUG:-}" ]]; then
   tar_opts=-zxvpf
   set -o xtrace
 fi

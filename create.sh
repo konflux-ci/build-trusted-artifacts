@@ -5,7 +5,7 @@ set -o nounset
 set -o pipefail
 
 tar_opts=-czf
-if [[ -v DEBUG ]]; then
+if [[ ! -z "${DEBUG:-}" ]]; then
   tar_opts=-cvzf
   set -o xtrace
 fi
