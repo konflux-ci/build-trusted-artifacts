@@ -120,7 +120,7 @@ if [ ${#artifacts[@]} != 0 ]; then
     }
 
     pushd "${archive_dir}" > /dev/null
-    auth_file=$(select-oci-auth.sh ${repo})
+    auth_file=$(select-oci-auth.sh "${repo}")
     retry oras push "${oras_opts[@]}" --registry-config "${auth_file}" "${store}" "${artifacts[@]}"
     popd > /dev/null
 
