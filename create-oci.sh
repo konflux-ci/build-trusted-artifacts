@@ -102,8 +102,25 @@ if [ ${#artifacts[@]} != 0 ]; then
         oras_opts+=("--annotation=quay.expires-after=${IMAGE_EXPIRES_AFTER}")
     fi
 
+    retry() {
+        local status
+        local retry=0
+        local -r interval=${RETRY_INTERVAL:-5}
+        local -r max_retries=6
+        while true; do
+            "$@" && break
+            status=$?
+            ((retry+=1))
+            if [ $retry -gt $max_retries ]; then
+                return $status
+            fi
+            echo "info: Waiting for a while, then retry ..." 1>&2
+            sleep "$interval"
+        done
+    }
+
     pushd "${archive_dir}" > /dev/null
-    oras push "${oras_opts[@]}" --registry-config <(select-oci-auth.sh ${repo}) "${store}" "${artifacts[@]}"
+    retry oras push "${oras_opts[@]}" --registry-config <(select-oci-auth.sh ${repo}) "${store}" "${artifacts[@]}"
     popd > /dev/null
 
     echo 'Artifacts created'

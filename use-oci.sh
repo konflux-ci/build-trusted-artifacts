@@ -19,6 +19,23 @@ if [[ ! -z "${DEBUG:-}" ]]; then
   set -o xtrace
 fi
 
+retry() {
+        local status
+        local retry=0
+        local -r interval=${RETRY_INTERVAL:-5}
+        local -r max_retries=6
+        while true; do
+            "$@" && break
+            status=$?
+            ((retry+=1))
+            if [ $retry -gt $max_retries ]; then
+                return $status
+            fi
+            echo "info: Waiting for a while, then retry ..." 1>&2
+            sleep "$interval"
+        done
+    }
+
 # contains name=path artifact pairs
 artifact_pairs=()
 
@@ -73,7 +90,7 @@ for artifact_pair in "${artifact_pairs[@]}"; do
 
     name="${uri#*:}"
 
-    oras blob fetch "${oras_opts[@]}" --registry-config <(select-oci-auth.sh ${name}) \
+    retry oras blob fetch "${oras_opts[@]}" --registry-config <(select-oci-auth.sh ${name}) \
         "${name}" --output - | tar -C "${destination}" "${tar_opts}" -
 
     echo "Restored artifact ${name} to ${destination}"
