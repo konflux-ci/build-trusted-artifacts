@@ -73,7 +73,7 @@ for artifact_pair in "${artifact_pairs[@]}"; do
 
     name="${uri#*:}"
 
-    oras blob fetch "${oras_opts[@]}" --registry-config <(select-oci-auth.sh ${name}) \
+    retry.sh oras blob fetch "${oras_opts[@]}" --registry-config <(select-oci-auth.sh ${name}) \
         "${name}" --output - | tar -C "${destination}" "${tar_opts}" -
 
     echo "Restored artifact ${name} to ${destination}"
