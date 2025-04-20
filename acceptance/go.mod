@@ -8,7 +8,7 @@ require (
 	github.com/docker/go-connections v0.5.0
 	github.com/google/go-cmp v0.6.0
 	github.com/google/go-containerregistry v0.19.1
-	github.com/opencontainers/image-spec v1.1.0
+	github.com/opencontainers/image-spec v1.1.1
 )
 
 require (
