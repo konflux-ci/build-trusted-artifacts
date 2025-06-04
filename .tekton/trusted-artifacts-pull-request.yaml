@@ -6,9 +6,11 @@ metadata:
     build.appstudio.redhat.com/commit_sha: '{{revision}}'
     build.appstudio.redhat.com/pull_request_number: '{{pull_request_number}}'
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
-    pipelinesascode.tekton.dev/max-keep-runs: '3'
-    pipelinesascode.tekton.dev/on-cel-expression: event == "pull_request" && target_branch == "main"
-    pipelinesascode.tekton.dev/pipeline: ".tekton/build-pipeline.yaml"
+    pipelinesascode.tekton.dev/max-keep-runs: "3"
+    pipelinesascode.tekton.dev/on-cel-expression: event == "pull_request" && target_branch
+      == "main"
+    pipelinesascode.tekton.dev/pipeline: .tekton/build-pipeline.yaml
+  creationTimestamp: null
   labels:
     appstudio.openshift.io/application: trusted-artifacts
     appstudio.openshift.io/component: trusted-artifacts
@@ -17,23 +19,26 @@ metadata:
   namespace: rhtap-build-tenant
 spec:
   params:
-    - name: dockerfile
-      value: Containerfile
-    - name: git-url
-      value: '{{repo_url}}'
-    - name: image-expires-after
-      value: 5d
-    - name: output-image
-      value: quay.io/redhat-user-workloads/rhtap-build-tenant/trusted-artifacts/trusted-artifacts:on-pr-{{revision}}
-    - name: path-context
-      value: .
-    - name: revision
-      value: '{{revision}}'
-    - name: build-source-image
-      value: true
+  - name: dockerfile
+    value: Containerfile
+  - name: git-url
+    value: '{{repo_url}}'
+  - name: image-expires-after
+    value: 5d
+  - name: output-image
+    value: quay.io/redhat-user-workloads/rhtap-build-tenant/trusted-artifacts/trusted-artifacts:on-pr-{{revision}}
+  - name: path-context
+    value: .
+  - name: revision
+    value: '{{revision}}'
+  - name: build-source-image
+    value: "true"
   pipelineRef:
     name: build-pipeline
+  taskRunTemplate:
+    serviceAccountName: build-pipeline-trusted-artifacts
   workspaces:
-    - name: git-auth
-      secret:
-        secretName: '{{ git_auth_secret }}'
+  - name: git-auth
+    secret:
+      secretName: '{{ git_auth_secret }}'
+status: {}
