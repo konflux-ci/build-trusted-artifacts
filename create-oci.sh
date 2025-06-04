@@ -109,7 +109,7 @@ if [ ${#artifacts[@]} != 0 ]; then
     select-oci-auth.sh "$repo" > "$authfile"
 
     pushd "${archive_dir}" > /dev/null
-    retry.sh oras push "${oras_opts[@]}" --registry-config "$authfile" "${store}" "${artifacts[@]}"
+    retry oras push "${oras_opts[@]}" --registry-config "$authfile" "${store}" "${artifacts[@]}"
     popd > /dev/null
 
     echo 'Artifacts created'
