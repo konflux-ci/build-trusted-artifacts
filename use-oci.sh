@@ -38,6 +38,9 @@ done
 # read in any oras options
 source oras_opts.sh
 
+tmp_workdir=$(mktemp -d --tmpdir use-oci.sh.XXXXXX)
+trap 'rm -rf $tmp_workdir' EXIT
+
 for artifact_pair in "${artifact_pairs[@]}"; do
     uri="${artifact_pair/=*}"
     destination="$(realpath "${artifact_pair/*=}")"
@@ -73,7 +76,10 @@ for artifact_pair in "${artifact_pairs[@]}"; do
 
     name="${uri#*:}"
 
-    retry.sh oras blob fetch "${oras_opts[@]}" --registry-config <(select-oci-auth.sh ${name}) \
+    authfile=$(mktemp --tmpdir="$tmp_workdir" "auth-XXXXXX.json")
+    select-oci-auth.sh "$name" > "$authfile"
+
+    retry.sh oras blob fetch "${oras_opts[@]}" --registry-config "$authfile" \
         "${name}" --output - | tar -C "${destination}" "${tar_opts}" -
 
     echo "Restored artifact ${name} to ${destination}"

@@ -59,6 +59,9 @@ artifacts=()
 
 repo="$(echo -n $store | sed 's_/\(.*\):\(.*\)_/\1_g')"
 
+tmp_workdir=$(mktemp -d --tmpdir create-oci.sh.XXXXXX)
+trap 'rm -rf $tmp_workdir' EXIT
+
 for artifact_pair in "${artifact_pairs[@]}"; do
     result_path="${artifact_pair/=*}"
     path="${artifact_pair/*=}"
@@ -102,8 +105,11 @@ if [ ${#artifacts[@]} != 0 ]; then
         oras_opts+=("--annotation=quay.expires-after=${IMAGE_EXPIRES_AFTER}")
     fi
 
+    authfile=$(mktemp --tmpdir="$tmp_workdir" "auth-XXXXXX.json")
+    select-oci-auth.sh "$repo" > "$authfile"
+
     pushd "${archive_dir}" > /dev/null
-    retry.sh oras push "${oras_opts[@]}" --registry-config <(select-oci-auth.sh ${repo}) "${store}" "${artifacts[@]}"
+    retry.sh oras push "${oras_opts[@]}" --registry-config "$authfile" "${store}" "${artifacts[@]}"
     popd > /dev/null
 
     echo 'Artifacts created'
