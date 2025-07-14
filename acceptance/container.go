@@ -291,7 +291,7 @@ func networkExists(ctx context.Context, name string) (bool, error) {
 	filters := filters.NewArgs()
 	filters.Add("name", name)
 
-	networks, err := containerClient.NetworkList(ctx, types.NetworkListOptions{
+	networks, err := containerClient.NetworkList(ctx, network.ListOptions{
 		Filters: filters,
 	})
 	if err != nil {
@@ -314,10 +314,9 @@ func createNetwork(ctx context.Context) error {
 	}
 
 	if !exists {
-		netConfig := types.NetworkCreate{
-			CheckDuplicate: true,
-			Driver:         "bridge",
-			Scope:          "local",
+		netConfig := network.CreateOptions{
+			Driver: "bridge",
+			Scope:  "local",
 		}
 
 		// Create the network
@@ -329,7 +328,7 @@ func createNetwork(ctx context.Context) error {
 }
 
 func imageExists(ctx context.Context, imageName string) (bool, error) {
-	images, err := containerClient.ImageList(ctx, types.ImageListOptions{})
+	images, err := containerClient.ImageList(ctx, image.ListOptions{})
 	if err != nil {
 		return false, err
 	}
