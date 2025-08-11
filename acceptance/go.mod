@@ -2,7 +2,7 @@ module github.com/enterprise-contract/build-trusted-artifacts/acceptance
 
 go 1.24
 
-toolchain go1.24.5
+toolchain go1.24.6
 
 require (
 	github.com/cucumber/godog v0.15.1
