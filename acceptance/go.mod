@@ -1,6 +1,6 @@
 module github.com/enterprise-contract/build-trusted-artifacts/acceptance
 
-go 1.24
+go 1.24.0
 
 toolchain go1.25.0
 
@@ -58,7 +58,7 @@ require (
 	go.opentelemetry.io/otel/trace v1.38.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.7.1 // indirect
 	golang.org/x/sync v0.16.0 // indirect
-	golang.org/x/sys v0.35.0 // indirect
+	golang.org/x/sys v0.36.0 // indirect
 	golang.org/x/time v0.12.0 // indirect
 	google.golang.org/protobuf v1.36.8 // indirect
 )
