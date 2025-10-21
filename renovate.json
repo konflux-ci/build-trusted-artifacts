@@ -1,11 +1,20 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["config:base"],
+  "extends": [
+    "config:recommended"
+  ],
   "dependencyDashboard": true,
   "tekton": {
-    "fileMatch": ["\\.yaml$", "\\.yml$"],
-    "includePaths": [".tekton/**"]
+    "managerFilePatterns": [
+      "/\\.yaml$/",
+      "/\\.yml$/"
+    ],
+    "includePaths": [
+      ".tekton/**"
+    ]
   },
-  "schedule": ["before 10am on Tuesday"],
+  "schedule": [
+    "before 10am on Tuesday"
+  ],
   "automerge": true
 }
