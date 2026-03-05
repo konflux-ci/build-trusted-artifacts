@@ -2,7 +2,7 @@
 
 oras_opts=(${ORAS_OPTIONS:-})
 
-if [[ -v CA_FILE ]]; then
+if [[ -v CA_FILE && -n "$CA_FILE" ]]; then
     oras_opts+=(--ca-file=${CA_FILE})
 fi
 
