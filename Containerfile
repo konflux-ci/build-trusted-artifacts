@@ -9,7 +9,7 @@ COPY oras_opts.sh /usr/local/bin/oras_opts.sh
 COPY entrypoint.sh /usr/local/bin/entrypoint
 COPY LICENSE /licenses/LICENSE
 
-FROM quay.io/konflux-ci/buildah-task:latest@sha256:ad6b1781824e7fdcc75b0f7a608c78b4f23447cd0a7a7aced6123d8640211aed AS buildah-task-image
+FROM quay.io/konflux-ci/buildah-task:latest@sha256:4c470b5a153c4acd14bf4f8731b5e36c61d7faafe09c2bf376bb81ce84aa5709 AS buildah-task-image
 FROM registry.access.redhat.com/ubi9/ubi-minimal:latest as oras
 ARG ORAS_VERSION=1.2.0
 ARG TARGETARCH
