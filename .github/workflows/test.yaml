@@ -14,6 +14,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 jobs:
   test:
@@ -29,14 +30,40 @@ jobs:
         cache: true
         cache-dependency-path: acceptance/go.sum
 
-    - name: Install shellspec
+    - name: Install shellspec and kcov
       # https://github.com/actions/runner-images/blob/main/images/ubuntu/Ubuntu2204-Readme.md#homebrew-note
       run: |
         eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
         brew tap shellspec/shellspec
-        brew install shellspec
+        brew install shellspec kcov
 
     - name: Run checks
       run: |
         eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
         make test
+
+    - name: Generate shell coverage report
+      run: |
+        eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+        shellspec --shell bash --kcov
+
+    - name: Generate Go coverage report
+      run: cd acceptance && go test -v -coverprofile=coverage.out ./...
+
+    - name: Upload shell coverage to Codecov
+      uses: codecov/codecov-action@v5
+      with:
+        use_oidc: true
+        flags: shellspec-tests
+        files: coverage/cobertura.xml
+        disable_search: true
+        fail_ci_if_error: false
+
+    - name: Upload Go coverage to Codecov
+      uses: codecov/codecov-action@v5
+      with:
+        use_oidc: true
+        flags: acceptance-tests
+        files: acceptance/coverage.out
+        disable_search: true
+        fail_ci_if_error: false
