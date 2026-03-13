@@ -42,14 +42,6 @@ jobs:
         eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
         make test
 
-    - name: Generate shell coverage report
-      run: |
-        eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-        shellspec --shell bash --kcov
-
-    - name: Generate Go coverage report
-      run: cd acceptance && go test -v -coverprofile=coverage.out ./...
-
     - name: Upload shell coverage to Codecov
       uses: codecov/codecov-action@v5
       with:
