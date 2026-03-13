@@ -40,21 +40,21 @@ Describe 'select-oci-auth.sh'
 
     Describe 'matches'
         Parameters
-            'quay.io' "$quayio_secret"
-            'quay.io/spam' "$quayio_spam_secret"
-            'quay.io/spam/bacon' "$quayio_spam_secret"
-            'quay.io/spam/bacon/eggs/ham/sausage' "$quayio_spam_secret"
-            'quay.io:443' "$quayio_443_secret"
-            'quay.io:443/spam' "$quayio_443_spam_secret"
-            'quay.io:443/spam/bacon' "$quayio_443_spam_secret"
-            'quay.io:5000' "$quayio_5000_secret"
-            'quay.io:5000/spam' "$quayio_5000_spam_secret"
-            'quay.io:5000/spam/bacon' "$quayio_5000_spam_secret"
+            'quay.io' quay.io "$quayio_secret"
+            'quay.io/spam' quay.io "$quayio_spam_secret"
+            'quay.io/spam/bacon' quay.io "$quayio_spam_secret"
+            'quay.io/spam/bacon/eggs/ham/sausage' quay.io "$quayio_spam_secret"
+            'quay.io:443' quay.io:443 "$quayio_443_secret"
+            'quay.io:443/spam' quay.io:443 "$quayio_443_spam_secret"
+            'quay.io:443/spam/bacon' quay.io:443 "$quayio_443_spam_secret"
+            'quay.io:5000' quay.io:5000 "$quayio_5000_secret"
+            'quay.io:5000/spam' quay.io:5000 "$quayio_5000_spam_secret"
+            'quay.io:5000/spam/bacon' quay.io:5000 "$quayio_5000_spam_secret"
         End
 
         It "$1"
             When run script ./select-oci-auth.sh $1
-            The output should include $2
+            The output should eq '{"auths":{"'$2'":{"auth":"'$3'"}}}'
             The error should include "Using token for"
         End
     End
