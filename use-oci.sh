@@ -80,7 +80,7 @@ for artifact_pair in "${artifact_pairs[@]}"; do
     select-oci-auth.sh "$name" > "$authfile"
 
     retry oras blob fetch "${oras_opts[@]}" --registry-config "$authfile" \
-        "${name}" --output - | tar -C "${destination}" "${tar_opts}" -
+        "${name}" --output - | LD_PRELOAD=/usr/local/lib/drop_cache.so tar -C "${destination}" "${tar_opts}" -
 
     echo "Restored artifact ${name} to ${destination}"
 done
