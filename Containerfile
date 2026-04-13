@@ -37,6 +37,8 @@ RUN microdnf update --assumeyes --nodocs --setopt=keepcache=0 && \
 
 RUN oras version
 
+RUN chmod -R a+w /etc/pki/
+
 USER notroot
 
 ENTRYPOINT [ "/usr/local/bin/entrypoint" ]

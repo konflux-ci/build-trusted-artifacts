@@ -2,19 +2,21 @@
 
 oras_opts=(${ORAS_OPTIONS:-})
 
-# Only set --ca-file if CA_FILE is non-empty AND file exists and is not empty
-# This avoids overriding system trust store and prevents "file not found" errors
 if [[ -v CA_FILE && -n "$CA_FILE" ]]; then
-    if [[ -f "$CA_FILE" && -s "$CA_FILE" ]]; then
-        oras_opts+=(--ca-file=${CA_FILE})
-        echo "Using custom CA certificate: $CA_FILE" >&2
-    elif [[ -f "$CA_FILE" ]]; then
-        echo "Warning: CA certificate file is empty: $CA_FILE" >&2
-        echo "Falling back to system trust store" >&2
+  if [[ -f "$CA_FILE" && -s "$CA_FILE" ]]; then
+    system_bundle=/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem
+    if [ -w "$system_bundle" ]; then
+      cat "$CA_FILE" >> "$system_bundle"
+      echo "Appended custom CA to system trust bundle" >&2
     else
-        echo "Warning: CA certificate path provided but file not found: $CA_FILE" >&2
-        echo "Falling back to system trust store" >&2
+      oras_opts+=(--ca-file=${CA_FILE})
+      echo "Using custom CA certificate (fallback): $CA_FILE" >&2
     fi
+  elif [[ -f "$CA_FILE" ]]; then
+    echo "Warning: CA certificate file is empty: $CA_FILE" >&2
+  else
+    echo "Warning: CA certificate path provided but file not found: $CA_FILE" >&2
+  fi
 fi
 
 if [[ ! -z "${DEBUG:-}" ]]; then
