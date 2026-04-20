@@ -2,11 +2,13 @@
 
 oras_opts=(${ORAS_OPTIONS:-})
 
-# Only set --ca-file if CA_FILE is non-empty AND file exists and is not empty
-# This avoids overriding system trust store and prevents "file not found" errors
+# When a custom CA file is provided, set SSL_CERT_FILE to point to it.
+# SSL_CERT_FILE is respected by Go's crypto/x509 (used by oras) and is ADDITIVE,
+# meaning oras will automatically merge the custom CA with the system CA bundle.
+# This ensures both public and self-hosted registries are trusted.
 if [[ -v CA_FILE && -n "$CA_FILE" ]]; then
     if [[ -f "$CA_FILE" && -s "$CA_FILE" ]]; then
-        oras_opts+=(--ca-file=${CA_FILE})
+        export SSL_CERT_FILE="$CA_FILE"
         echo "Using custom CA certificate: $CA_FILE" >&2
     elif [[ -f "$CA_FILE" ]]; then
         echo "Warning: CA certificate file is empty: $CA_FILE" >&2
