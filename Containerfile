@@ -16,6 +16,11 @@ ARG TARGETARCH
 ADD https://github.com/oras-project/oras/releases/download/v${ORAS_VERSION}/oras_${ORAS_VERSION}_linux_${TARGETARCH}.tar.gz /tmp
 RUN microdnf install --assumeyes tar gzip && tar -x -C /tmp -f /tmp/oras_${ORAS_VERSION}_linux_${TARGETARCH}.tar.gz
 
+FROM registry.access.redhat.com/ubi9/ubi-minimal:latest as drop-cache
+COPY drop_cache.c /tmp/drop_cache.c
+RUN microdnf install --assumeyes gcc && \
+    gcc -shared -fPIC -o /tmp/drop_cache.so /tmp/drop_cache.c -ldl
+
 FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
 
 LABEL \
@@ -29,6 +34,7 @@ LABEL \
 
 COPY --from=files / /
 COPY --chown=0:0 --from=oras /tmp/oras /usr/local/bin/oras
+COPY --from=drop-cache /tmp/drop_cache.so /usr/local/lib/drop_cache.so
 COPY --from=buildah-task-image /usr/bin/retry /usr/local/bin/
 
 RUN microdnf update --assumeyes --nodocs --setopt=keepcache=0 && \
