@@ -31,13 +31,11 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-time_format=''
 log() {
     :
 }
 
 if [[ ! -z "${DEBUG:-}" ]]; then
-    time_format='User:\t\t%U\nSystem:\t\t%S\nElapsed:\t%E\nCPU:\t\t%P\nMax RS:\t\t%MKiB\nAVG Memory:\t%KKiB\nInputs:\t\t%I\nOutputs:\t%O\nWaits:\t\t%w\n'
     log() {
         # shellcheck disable=SC2059
         printf "DEBUG: %s\n" "$(printf "${@}")"
@@ -75,10 +73,10 @@ done
 
 case "${op}" in
     "create")
-        TIME="${time_format}" time /usr/local/bin/create-archive --store "${store}" "${cmd[@]}"
+        /usr/bin/time -v /usr/local/bin/create-archive --store "${store}" "${cmd[@]}"
         ;;
     "use")
-        TIME="${time_format}" time /usr/local/bin/use-archive "${cmd[@]}"
+        /usr/bin/time -v /usr/local/bin/use-archive "${cmd[@]}"
         ;;
     *)
         echo "Unsupported operation: ${op}"
