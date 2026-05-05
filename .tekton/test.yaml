@@ -1,0 +1,77 @@
+kind: Pipeline
+apiVersion: tekton.dev/v1beta1
+metadata:
+  name: functional-test
+spec:
+  params:
+    - name: SNAPSHOT
+      type: string
+  tasks:
+    - name: functional
+      params:
+        - name: SNAPSHOT
+          value: $(params.SNAPSHOT)
+      taskSpec:
+        params:
+          - name: SNAPSHOT
+        steps:
+          - name: test
+            image: registry.redhat.io/openshift4/ose-cli:latest
+            env:
+              - name: SNAPSHOT
+                value: $(params.SNAPSHOT)
+            script: |
+              #!/bin/bash
+              set -euo pipefail
+
+              IMAGE=$(echo ${SNAPSHOT} | yq -r '.components[].containerImage')
+              echo "Testing image: ${IMAGE}"
+              TESTS_FAILED="false"
+              failure_num=0
+
+              # Extract scripts and oras from the built image
+              oc image extract --confirm ${IMAGE} \
+                --path=/usr/local/bin/oras:/usr/local/bin/. \
+                --path=/usr/local/bin/oras_opts.sh:/usr/local/bin/. \
+                --path=/usr/local/bin/create-archive:/usr/local/bin/. \
+                --path=/usr/local/bin/use-archive:/usr/local/bin/.
+              chmod +x /usr/local/bin/oras
+
+              ## Test: custom CA_FILE must not break public registry access
+              echo "=== Test: CA_FILE does not break public registry TLS ==="
+
+              # First, verify oras can reach a public registry without CA_FILE
+              oras manifest fetch --no-tty quay.io/podman/hello:latest > /dev/null 2>&1
+              if [ $? -ne 0 ]; then
+                echo "SKIP: Cannot reach public registry (no network?)"
+              else
+                echo "Baseline: public registry reachable without CA_FILE"
+
+                # Now set CA_FILE to a dummy self-signed cert and source oras_opts.sh
+                openssl req -x509 -newkey ec \
+                  -pkeyopt ec_paramgen_curve:prime256v1 \
+                  -nodes -keyout /tmp/ca.key -out /tmp/ca.crt \
+                  -days 1 -subj "/CN=test-custom-ca" 2>/dev/null
+
+                export CA_FILE=/tmp/ca.crt
+                source /usr/local/bin/oras_opts.sh
+
+                # Same public registry should still be reachable
+                oras manifest fetch --no-tty \
+                  "${oras_opts[@]}" quay.io/podman/hello:latest > /dev/null 2>&1
+                if [ $? -eq 0 ]; then
+                  echo "PASS: Public registry still reachable with CA_FILE set"
+                else
+                  echo "FAIL: CA_FILE broke public registry TLS verification"
+                  TESTS_FAILED="true"
+                  failure_num=$((failure_num + 1))
+                fi
+
+                unset CA_FILE SSL_CERT_FILE
+              fi
+
+              if [ "$TESTS_FAILED" == "true" ]; then
+                echo "$failure_num test(s) failed."
+                exit 1
+              fi
+              echo "All tests passed."
