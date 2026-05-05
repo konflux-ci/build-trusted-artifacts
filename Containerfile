@@ -35,6 +35,10 @@ RUN microdnf update --assumeyes --nodocs --setopt=keepcache=0 && \
     microdnf install --assumeyes --nodocs --setopt=keepcache=0 tar gzip time jq findutils && \
     useradd --non-unique --uid 0 --gid 0 --shell /bin/bash notroot
 
+# TODO: Obviously, don't do this...
+ADD https://www.ivarch.com/programs/binaries/pv-1.10.5-1.el9.x86_64.rpm /tmp
+RUN rpm -ivh /tmp/pv-1.10.5-1.el9.x86_64.rpm && pv --version && rm /tmp/pv-1.10.5-1.el9.x86_64.rpm
+
 RUN oras version
 
 USER notroot
