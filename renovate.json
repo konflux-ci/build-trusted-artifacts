@@ -16,5 +16,6 @@
   "schedule": [
     "before 10am on Tuesday"
   ],
-  "automerge": true
+  "automerge": true,
+  "platformAutomerge": true
 }
