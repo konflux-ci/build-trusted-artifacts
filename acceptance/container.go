@@ -18,6 +18,7 @@ import (
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
+	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/moby/go-archive"
 	"github.com/docker/go-connections/nat"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -277,10 +278,8 @@ func buildContainerImage(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("building image: %w", err)
 	}
-	// Reading the response is how we wait for the build to be complete. We don't really care about
-	// the actual response.
-	if _, err := io.ReadAll(buildResponse.Body); err != nil {
-		return fmt.Errorf("reading build response: %w", err)
+	if err := jsonmessage.DisplayJSONMessagesStream(buildResponse.Body, os.Stderr, 0, false, nil); err != nil {
+		return fmt.Errorf("building image: %w", err)
 	}
 	defer buildResponse.Body.Close()
 
