@@ -39,6 +39,16 @@ Feature: Artifacts
         Then the artifact creation for path "/source" is skipped
          And the logs contain line: "WARN: found skip file"
 
+    Scenario: CA_FILE does not clobber system trust store
+       Given a source file "test.json":
+            """
+            {"test": true}
+            """
+         And the registry CA is in the system trust store
+        When artifact "TEST" is created for file "test.json"
+         And artifact "TEST" is used
+        Then the restored file "test.json" should match its source
+
     Scenario: Skipping use
        Given files:
         | path                                | content |

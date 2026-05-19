@@ -20,7 +20,11 @@ import (
 
 const mountedPath = "/data"
 
-const testRegistryKey = contextKey("test-registry")
+const (
+	testRegistryKey = contextKey("test-registry")
+	caOverrideKey   = contextKey("ca-override")
+	extraBindsKey   = contextKey("extra-binds")
+)
 
 func TestFeatures(t *testing.T) {
 	suite := godog.TestSuite{
@@ -55,6 +59,7 @@ func initializeScenario(sc *godog.ScenarioContext) {
 	sc.Step(`^the logs contain line: "([^"]*)"$`, theLogsContainLine)
 	sc.Step(`^the artifact creation for path "([^"]*)" is skipped$`, artifactCreationForPathIsSkipped)
 	sc.Step(`^an dummy artifact "([^"]*)"$`, createDummyArtifact)
+	sc.Step(`^the registry CA is in the system trust store$`, registryCAInSystemTrustStore)
 }
 
 func initializeTestSuite(suite *godog.TestSuiteContext) {
@@ -85,7 +90,7 @@ func setupScenario(ctx context.Context, sc *godog.Scenario) (context.Context, er
 		return ctx, err
 	}
 
-	binds, err := containerBinds(ts)
+	binds, err := containerBinds(ctx, ts)
 	if err != nil {
 		return ctx, err
 	}
@@ -136,7 +141,7 @@ func createArtifact(ctx context.Context, result string, path string) (context.Co
 	sourceFile := filepath.Join(mountedTS.sourceDir(), path)
 	resultFile := filepath.Join(mountedTS.resultsDir(), result)
 
-	binds, err := containerBinds(ts)
+	binds, err := containerBinds(ctx, ts)
 	if err != nil {
 		return ctx, err
 	}
@@ -148,7 +153,7 @@ func createArtifact(ctx context.Context, result string, path string) (context.Co
 		fmt.Sprintf("%s=%s", resultFile, sourceFile),
 	}
 
-	if ctx, err = runContainer(ctx, cmd, binds, mountedTS.domainCert()); err != nil {
+	if ctx, err = runContainer(ctx, cmd, binds, caCert(ctx, mountedTS)); err != nil {
 		return ctx, fmt.Errorf("creating artifact: %w", err)
 	}
 
@@ -161,7 +166,7 @@ func useArtifact(ctx context.Context, result string) (context.Context, error) {
 		return nil, fmt.Errorf("useArtifact get test state: %w", err)
 	}
 
-	binds, err := containerBinds(ts)
+	binds, err := containerBinds(ctx, ts)
 	if err != nil {
 		return ctx, err
 	}
@@ -172,20 +177,31 @@ func useArtifact(ctx context.Context, result string) (context.Context, error) {
 	}
 
 	mountedTS := ts.forMount(mountedPath)
-	if ctx, err = runContainer(ctx, cmd, binds, mountedTS.domainCert()); err != nil {
+	if ctx, err = runContainer(ctx, cmd, binds, caCert(ctx, mountedTS)); err != nil {
 		return ctx, fmt.Errorf("use artifact: %w", err)
 	}
 
 	return ctx, nil
 }
 
-func containerBinds(ts testState) ([]string, error) {
+func containerBinds(ctx context.Context, ts testState) ([]string, error) {
 	mountedTS := ts.forMount(mountedPath)
-	return []string{
+	binds := []string{
 		// TODO: The ":Z" option is required on Linux systems because of selinux. This might not
 		// work on a mac, for example.
 		fmt.Sprintf("%s:%s:Z", ts.contextDir, mountedTS.contextDir),
-	}, nil
+	}
+	if extra, ok := ctx.Value(extraBindsKey).([]string); ok {
+		binds = append(binds, extra...)
+	}
+	return binds, nil
+}
+
+func caCert(ctx context.Context, mountedTS testState) string {
+	if override, ok := ctx.Value(caOverrideKey).(string); ok {
+		return override
+	}
+	return mountedTS.domainCert()
 }
 
 // return command and binds
@@ -308,10 +324,9 @@ func artifactContains(ctx context.Context, result string, files *godog.Table) (c
 	mountedTS := ts.forMount(mountedPath)
 	restoredPath := mountedTS.restoredDir()
 
-	binds := []string{
-		// TODO: The ":Z" option is required on Linux systems because of to selinux. This might not
-		// work on a mac, for example.
-		fmt.Sprintf("%s:%s:Z", ts.contextDir, mountedTS.contextDir),
+	binds, err := containerBinds(ctx, ts)
+	if err != nil {
+		return ctx, err
 	}
 
 	cmd := []string{
@@ -319,7 +334,7 @@ func artifactContains(ctx context.Context, result string, files *godog.Table) (c
 		fmt.Sprintf("%s=%s", archiveUri, restoredPath),
 	}
 
-	if ctx, err = runContainer(ctx, cmd, binds, mountedTS.domainCert()); err != nil {
+	if ctx, err = runContainer(ctx, cmd, binds, caCert(ctx, mountedTS)); err != nil {
 		return ctx, fmt.Errorf("using artifact: %w", err)
 	}
 
@@ -420,4 +435,31 @@ func createDummyArtifact(ctx context.Context, name string) (context.Context, err
 		return ctx, err
 	}
 	return createArtifact(ctx, "DUMMY", "dummy")
+}
+
+func registryCAInSystemTrustStore(ctx context.Context) (context.Context, error) {
+	ts, err := getTestState(ctx)
+	if err != nil {
+		return ctx, err
+	}
+
+	if err := generateSelfSignedCert(ts.decoyCert(), ts.decoyKey()); err != nil {
+		return ctx, fmt.Errorf("generating decoy CA: %w", err)
+	}
+
+	registryCA, err := os.ReadFile(ts.domainCert())
+	if err != nil {
+		return ctx, fmt.Errorf("reading registry CA: %w", err)
+	}
+	if err := os.WriteFile(ts.systemCABundle(), registryCA, 0644); err != nil {
+		return ctx, fmt.Errorf("writing system CA bundle: %w", err)
+	}
+
+	mountedTS := ts.forMount(mountedPath)
+	ctx = context.WithValue(ctx, caOverrideKey, mountedTS.decoyCert())
+	ctx = context.WithValue(ctx, extraBindsKey, []string{
+		fmt.Sprintf("%s:/etc/pki/tls/certs/ca-bundle.crt:Z", ts.systemCABundle()),
+	})
+
+	return ctx, nil
 }
