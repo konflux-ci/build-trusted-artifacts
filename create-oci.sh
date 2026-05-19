@@ -22,7 +22,7 @@ set -o pipefail
 # using `-n` ensures gzip does not add a modification time to the output. This
 # helps in ensuring the archive digest is the same for the same content.
 tar_opts=(--create --use-compress-program='gzip -n' --file)
-if [[ ! -z "${DEBUG:-}" ]]; then
+if [[ -n "${DEBUG:-}" ]]; then
   tar_opts=(--verbose "${tar_opts[@]}")
   set -o xtrace
 fi
@@ -57,7 +57,7 @@ archive_dir="$(mktemp -d)"
 
 artifacts=()
 
-repo="$(echo -n $store | sed 's_/\(.*\):\(.*\)_/\1_g')"
+repo="$(echo -n "$store" | sed 's_/\(.*\):\(.*\)_/\1_g')"
 
 tmp_workdir=$(mktemp -d --tmpdir create-oci.sh.XXXXXX)
 trap 'rm -rf $tmp_workdir' EXIT
@@ -71,7 +71,7 @@ for artifact_pair in "${artifact_pairs[@]}"; do
       continue
     fi
 
-    artifact_name="$(basename ${result_path})"
+    artifact_name="$(basename "${result_path}")"
 
     archive="${archive_dir}/${artifact_name}"
 

@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/build"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/image"
@@ -81,8 +81,8 @@ func runRegistry(ctx context.Context, binds []string, certs, key string) (string
 		if err != nil {
 			panic(err)
 		}
-		defer reader.Close()
-		io.Copy(os.Stdout, reader)
+		defer func() { _ = reader.Close() }()
+		_, _ = io.Copy(os.Stdout, reader)
 	}
 
 	cont, err := containerClient.ContainerCreate(
@@ -158,7 +158,7 @@ func cleanupContainer(ctx context.Context, containerID string) error {
 		return fmt.Errorf("inspecting container: %w", err)
 	}
 
-	stopContainer(ctx, containerID)
+	_ = stopContainer(ctx, containerID)
 
 	hostBinds := containerJSON.HostConfig.Binds
 	// Remove bind mounts
@@ -205,7 +205,7 @@ func runContainer(ctx context.Context, cmd, binds []string, cert string) (contex
 		return ctx, fmt.Errorf("creating container: %w", err)
 	}
 
-	defer containerClient.ContainerRemove(ctx, cont.ID, container.RemoveOptions{Force: true})
+	defer func() { _ = containerClient.ContainerRemove(ctx, cont.ID, container.RemoveOptions{Force: true}) }()
 
 	if err := containerClient.ContainerStart(ctx, cont.ID, container.StartOptions{}); err != nil {
 		return ctx, fmt.Errorf("starting container %s: %w", cont.ID, err)
@@ -258,7 +258,7 @@ func getContainerLogs(ctx context.Context, contID string) string {
 
 func buildContainerImage(ctx context.Context) error {
 	targetArch := runtime.GOARCH
-	opts := types.ImageBuildOptions{
+	opts := build.ImageBuildOptions{
 		Dockerfile: "Containerfile",
 		Tags:       []string{containerImage},
 		BuildArgs: map[string]*string{
@@ -281,7 +281,7 @@ func buildContainerImage(ctx context.Context) error {
 	if err := jsonmessage.DisplayJSONMessagesStream(buildResponse.Body, os.Stderr, 0, false, nil); err != nil {
 		return fmt.Errorf("building image: %w", err)
 	}
-	defer buildResponse.Body.Close()
+	defer func() { _ = buildResponse.Body.Close() }()
 
 	return nil
 }
