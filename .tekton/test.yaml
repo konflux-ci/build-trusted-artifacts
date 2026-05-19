@@ -44,8 +44,7 @@ spec:
               echo "=== Test: CA_FILE does not break public registry TLS ==="
 
               # First, verify oras can reach a public registry without CA_FILE
-              oras manifest fetch --no-tty quay.io/podman/hello:latest > /dev/null 2>&1
-              if [ $? -ne 0 ]; then
+              if ! oras manifest fetch --no-tty quay.io/podman/hello:latest > /dev/null; then
                 echo "SKIP: Cannot reach public registry (no network?)"
               else
                 echo "Baseline: public registry reachable without CA_FILE"
@@ -60,9 +59,8 @@ spec:
                 source /usr/local/bin/oras_opts.sh
 
                 # Same public registry should still be reachable
-                oras manifest fetch --no-tty \
-                  "${oras_opts[@]}" quay.io/podman/hello:latest > /dev/null 2>&1
-                if [ $? -eq 0 ]; then
+                if oras manifest fetch --no-tty \
+                  "${oras_opts[@]}" quay.io/podman/hello:latest > /dev/null; then
                   echo "PASS: Public registry still reachable with CA_FILE set"
                 else
                   echo "FAIL: CA_FILE broke public registry TLS verification"
