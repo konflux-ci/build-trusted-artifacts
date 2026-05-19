@@ -35,7 +35,7 @@ log() {
     :
 }
 
-if [[ ! -z "${DEBUG:-}" ]]; then
+if [[ -n "${DEBUG:-}" ]]; then
     log() {
         # shellcheck disable=SC2059
         printf "DEBUG: %s\n" "$(printf "${@}")"

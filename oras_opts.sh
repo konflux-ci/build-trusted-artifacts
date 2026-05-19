@@ -1,6 +1,9 @@
 #!/bin/bash
 
-oras_opts=(${ORAS_OPTIONS:-})
+oras_opts=()
+if [[ -n "${ORAS_OPTIONS:-}" ]]; then
+    IFS=' ' read -ra oras_opts <<< "$ORAS_OPTIONS"
+fi
 
 # When a custom CA file is provided, set SSL_CERT_FILE to point to it.
 # SSL_CERT_FILE is respected by Go's crypto/x509 (used by oras) and is ADDITIVE,
@@ -19,6 +22,6 @@ if [[ -v CA_FILE && -n "$CA_FILE" ]]; then
     fi
 fi
 
-if [[ ! -z "${DEBUG:-}" ]]; then
+if [[ -n "${DEBUG:-}" ]]; then
     oras_opts+=(--debug)
 fi

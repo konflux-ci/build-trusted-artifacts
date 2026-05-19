@@ -54,7 +54,7 @@ func generateSelfSignedCert(cert, key string) error {
 	if err != nil {
 		return err
 	}
-	defer certOut.Close()
+	defer func() { _ = certOut.Close() }()
 	if err := pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: certBytes}); err != nil {
 		return err
 	}
@@ -64,7 +64,7 @@ func generateSelfSignedCert(cert, key string) error {
 	if err != nil {
 		return err
 	}
-	defer keyOut.Close()
+	defer func() { _ = keyOut.Close() }()
 	privBytes, err := x509.MarshalECPrivateKey(priv)
 	if err != nil {
 		return err

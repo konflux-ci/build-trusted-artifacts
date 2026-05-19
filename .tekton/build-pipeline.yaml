@@ -3,20 +3,6 @@ kind: Pipeline
 metadata:
   name: build-pipeline
 spec:
-  finally:
-  - name: show-sbom
-    params:
-    - name: IMAGE_URL
-      value: $(tasks.build-container.results.IMAGE_URL)
-    taskRef:
-      params:
-      - name: name
-        value: show-sbom
-      - name: bundle
-        value: quay.io/konflux-ci/tekton-catalog/task-show-sbom:0.1@sha256:a7346ed61237db4f82ff782e0c9e8b30536e0e67b907ad600341a6d192e80012
-      - name: kind
-        value: task
-      resolver: bundles
   params:
   - description: Source Repository URL
     name: git-url

@@ -20,6 +20,21 @@ import (
 
 const mountedPath = "/data"
 
+func TestMain(m *testing.M) {
+	if err := initBashCoverage(); err != nil {
+		fmt.Fprintf(os.Stderr, "bash coverage init: %v\n", err)
+	}
+
+	code := m.Run()
+
+	if err := collectBashCoverage(); err != nil {
+		fmt.Fprintf(os.Stderr, "bash coverage collect: %v\n", err)
+	}
+	cleanupBashCoverage()
+
+	os.Exit(code)
+}
+
 const (
 	testRegistryKey = contextKey("test-registry")
 	caOverrideKey   = contextKey("ca-override")
@@ -110,7 +125,7 @@ func setupScenario(ctx context.Context, sc *godog.Scenario) (context.Context, er
 func teardownScenario(ctx context.Context, sc *godog.Scenario, _ error) (context.Context, error) {
 	// Purposely ignore errors here to prevent a teardown error to mask a test error.
 	if registryID, ok := ctx.Value(testRegistryKey).(string); ok {
-		cleanupContainer(ctx, registryID)
+		_ = cleanupContainer(ctx, registryID)
 	}
 
 	ts, _ := getTestState(ctx)
