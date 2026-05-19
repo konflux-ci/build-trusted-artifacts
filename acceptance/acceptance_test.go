@@ -59,6 +59,8 @@ func initializeScenario(sc *godog.ScenarioContext) {
 	sc.Step(`^the logs contain line: "([^"]*)"$`, theLogsContainLine)
 	sc.Step(`^the artifact creation for path "([^"]*)" is skipped$`, artifactCreationForPathIsSkipped)
 	sc.Step(`^an dummy artifact "([^"]*)"$`, createDummyArtifact)
+	sc.Step(`^the CA_FILE is set to the registry certificate$`, caFileSetToRegistryCert)
+	sc.Step(`^the CA_FILE is set to a decoy certificate$`, caFileSetToDecoyCert)
 	sc.Step(`^the registry CA is in the system trust store$`, registryCAInSystemTrustStore)
 }
 
@@ -437,7 +439,13 @@ func createDummyArtifact(ctx context.Context, name string) (context.Context, err
 	return createArtifact(ctx, "DUMMY", "dummy")
 }
 
-func registryCAInSystemTrustStore(ctx context.Context) (context.Context, error) {
+func caFileSetToRegistryCert(ctx context.Context) (context.Context, error) {
+	// This is the default behavior provided by runContainer via caCert. This step exists to make
+	// the feature file explicit about the CA_FILE always being set.
+	return ctx, nil
+}
+
+func caFileSetToDecoyCert(ctx context.Context) (context.Context, error) {
 	ts, err := getTestState(ctx)
 	if err != nil {
 		return ctx, err
@@ -445,6 +453,18 @@ func registryCAInSystemTrustStore(ctx context.Context) (context.Context, error) 
 
 	if err := generateSelfSignedCert(ts.decoyCert(), ts.decoyKey()); err != nil {
 		return ctx, fmt.Errorf("generating decoy CA: %w", err)
+	}
+
+	mountedTS := ts.forMount(mountedPath)
+	ctx = context.WithValue(ctx, caOverrideKey, mountedTS.decoyCert())
+
+	return ctx, nil
+}
+
+func registryCAInSystemTrustStore(ctx context.Context) (context.Context, error) {
+	ts, err := getTestState(ctx)
+	if err != nil {
+		return ctx, err
 	}
 
 	registryCA, err := os.ReadFile(ts.domainCert())
@@ -455,8 +475,6 @@ func registryCAInSystemTrustStore(ctx context.Context) (context.Context, error) 
 		return ctx, fmt.Errorf("writing system CA bundle: %w", err)
 	}
 
-	mountedTS := ts.forMount(mountedPath)
-	ctx = context.WithValue(ctx, caOverrideKey, mountedTS.decoyCert())
 	ctx = context.WithValue(ctx, extraBindsKey, []string{
 		fmt.Sprintf("%s:/etc/pki/tls/certs/ca-bundle.crt:Z", ts.systemCABundle()),
 	})
