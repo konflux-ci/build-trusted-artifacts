@@ -179,6 +179,11 @@ func runContainer(ctx context.Context, cmd, binds []string, cert string) (contex
 	}
 	env = append(env, fmt.Sprintf("CA_FILE=%s", cert))
 
+	if bashCoverageDir != "" {
+		binds = append(binds, fmt.Sprintf("%s:%s:Z", bashCoverageDir, coverageMountPath))
+		env = append(env, fmt.Sprintf("BASH_ENV=%s/%s", coverageMountPath, coverageInitFile))
+	}
+
 	user, err := user.Current()
 	if err != nil {
 		return ctx, err

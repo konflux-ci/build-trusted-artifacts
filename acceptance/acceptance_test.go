@@ -20,6 +20,21 @@ import (
 
 const mountedPath = "/data"
 
+func TestMain(m *testing.M) {
+	if err := initBashCoverage(); err != nil {
+		fmt.Fprintf(os.Stderr, "bash coverage init: %v\n", err)
+	}
+
+	code := m.Run()
+
+	if err := collectBashCoverage(); err != nil {
+		fmt.Fprintf(os.Stderr, "bash coverage collect: %v\n", err)
+	}
+	cleanupBashCoverage()
+
+	os.Exit(code)
+}
+
 const (
 	testRegistryKey = contextKey("test-registry")
 	caOverrideKey   = contextKey("ca-override")
