@@ -6,6 +6,7 @@ COPY use-oci.sh /usr/local/bin/use-archive
 COPY oras_opts.sh /usr/local/bin/oras_opts.sh
 COPY entrypoint.sh /usr/local/bin/entrypoint
 COPY LICENSE /licenses/LICENSE
+COPY test/e2e.sh /usr/local/bin/e2e-test
 
 FROM quay.io/konflux-ci/buildah-task:latest@sha256:4c470b5a153c4acd14bf4f8731b5e36c61d7faafe09c2bf376bb81ce84aa5709 AS buildah-task-image
 
