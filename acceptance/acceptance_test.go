@@ -110,7 +110,7 @@ func setupScenario(ctx context.Context, sc *godog.Scenario) (context.Context, er
 func teardownScenario(ctx context.Context, sc *godog.Scenario, _ error) (context.Context, error) {
 	// Purposely ignore errors here to prevent a teardown error to mask a test error.
 	if registryID, ok := ctx.Value(testRegistryKey).(string); ok {
-		cleanupContainer(ctx, registryID)
+		_ = cleanupContainer(ctx, registryID)
 	}
 
 	ts, _ := getTestState(ctx)

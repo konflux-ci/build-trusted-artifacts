@@ -30,7 +30,7 @@ original_ref="$1"
 ref="${original_ref/@*}"
 
 # Remove tag from image reference while making sure optional registry port is taken into account
-ref="$(echo -n $ref | sed 's_/\(.*\):\(.*\)_/\1_g')"
+ref="$(echo -n "$ref" | sed 's_/\(.*\):\(.*\)_/\1_g')"
 
 registry="${ref/\/*}"
 
@@ -38,10 +38,10 @@ AUTHFILE="${AUTHFILE:-$HOME/.docker/config.json}"
 
 if [[ -f $AUTHFILE ]]; then
     while true; do
-        token=$(< "${AUTHFILE}" jq -c '.auths["'$ref'"]')
+        token=$(< "${AUTHFILE}" jq -c '.auths["'"$ref"'"]')
         if [[ "$token" != "null" && "$token" != "" ]]; then
             >&2 echo "Using token for $ref"
-            echo -n '{"auths": {"'$registry'": '$token'}}' | jq -c .
+            echo -n '{"auths": {"'"$registry"'": '"$token"'}}' | jq -c .
             exit 0
         fi
 
