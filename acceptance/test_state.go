@@ -64,6 +64,18 @@ func (ts *testState) domainKey() string {
 	return fmt.Sprintf("%s/domain.key", ts.certsDir())
 }
 
+func (ts *testState) decoyCert() string {
+	return filepath.Join(ts.certsDir(), "decoy-ca.crt")
+}
+
+func (ts *testState) decoyKey() string {
+	return filepath.Join(ts.certsDir(), "decoy-ca.key")
+}
+
+func (ts *testState) systemCABundle() string {
+	return filepath.Join(ts.certsDir(), "system-ca-bundle.crt")
+}
+
 func (ts *testState) forMount(mountDir string) testState {
 	// Do not create the required directories because this is meant to represent the directory
 	// structure within a container.
