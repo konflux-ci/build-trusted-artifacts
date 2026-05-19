@@ -1,5 +1,8 @@
 Feature: Artifacts
 
+    Background:
+        Given the CA_FILE is set to the registry certificate
+
     Scenario: Create and use artifact from single file
         Given a source file "foobar.json":
             """
@@ -45,6 +48,7 @@ Feature: Artifacts
             {"test": true}
             """
          And the registry CA is in the system trust store
+         And the CA_FILE is set to a decoy certificate
         When artifact "TEST" is created for file "test.json"
          And artifact "TEST" is used
         Then the restored file "test.json" should match its source
