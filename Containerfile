@@ -11,7 +11,7 @@ FROM quay.io/konflux-ci/buildah-task:latest@sha256:4c470b5a153c4acd14bf4f8731b5e
 
 FROM quay.io/konflux-ci/oras:latest@sha256:c4fb02d6c1caa722360e0317002d5dfc2fce8a465bb3a3fdd62a3d1608105cbc as oras
 
-FROM registry.access.redhat.com/ubi9/ubi-minimal:latest@sha256:1bc3c5c15720506a0cf48adfdf8b623dfe704377e007d7bbae8d14876392ca6a
+FROM registry.access.redhat.com/ubi9/ubi-minimal:latest@sha256:850143255ee0d1915f09aaa09f6ed31f24086ba605c323badfbefa95b8c52b0e
 
 LABEL \
   description="RHTAP Trusted Artifacts implementation creates and restores archives of files maintaining their integrity." \
