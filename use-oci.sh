@@ -79,8 +79,14 @@ for artifact_pair in "${artifact_pairs[@]}"; do
     authfile=$(mktemp --tmpdir="$tmp_workdir" "auth-XXXXXX.json")
     select-oci-auth.sh "$name" > "$authfile"
 
-    retry oras blob fetch "${oras_opts[@]}" --registry-config "$authfile" \
-        "${name}" --output - | tar -C "${destination}" "${tar_opts}" -
+    oras_cmd=$(
+        printf '%q ' oras blob fetch "${oras_opts[@]}" --registry-config "$authfile" \
+            "${name}" --output -
+    )
+    tar_cmd=$(
+        printf '%q ' tar -C "${destination}" "${tar_opts}" -
+    )
+    retry /bin/bash -o pipefail -c "${oras_cmd} | ${tar_cmd}"
 
     echo "Restored artifact ${name} to ${destination}"
 done
