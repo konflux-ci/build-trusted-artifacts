@@ -8,7 +8,7 @@ require (
 	github.com/docker/docker v28.5.2+incompatible
 	github.com/docker/go-connections v0.7.0
 	github.com/google/go-cmp v0.7.0
-	github.com/google/go-containerregistry v0.21.7
+	github.com/google/go-containerregistry v0.21.8
 	github.com/moby/go-archive v0.2.0
 	github.com/opencontainers/image-spec v1.1.1
 )
@@ -33,7 +33,7 @@ require (
 	github.com/hashicorp/go-memdb v1.3.5 // indirect
 	github.com/hashicorp/go-uuid v1.0.3 // indirect
 	github.com/hashicorp/golang-lru v1.0.2 // indirect
-	github.com/klauspost/compress v1.19.0 // indirect
+	github.com/klauspost/compress v1.19.1 // indirect
 	github.com/moby/docker-image-spec v1.3.1 // indirect
 	github.com/moby/patternmatcher v0.6.1 // indirect
 	github.com/moby/sys/atomicwriter v0.1.0 // indirect
