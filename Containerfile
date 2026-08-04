@@ -9,7 +9,7 @@ COPY LICENSE /licenses/LICENSE
 
 FROM quay.io/konflux-ci/buildah-task:latest@sha256:4c470b5a153c4acd14bf4f8731b5e36c61d7faafe09c2bf376bb81ce84aa5709 AS buildah-task-image
 
-FROM quay.io/konflux-ci/oras:latest@sha256:4d290abfdc1dfa9f8a199f401bf5ec268f0a20a31d4a45611db0bebe8029dbfd as oras
+FROM quay.io/konflux-ci/oras:latest@sha256:b38167deed2c10441fc9b810055ab1763a4dfb14b1a2144b6b37a9fa7d806a2a as oras
 
 FROM registry.access.redhat.com/ubi9/ubi-minimal:latest@sha256:2e8edce823a48e51858f1fad3ff4cbf6875ce8a3f86b9eecf298bc2050c8652a
 
