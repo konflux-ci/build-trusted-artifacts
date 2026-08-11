@@ -112,6 +112,35 @@ podman run -v $(pwd):/export/run -v ~/.docker/config.json:/home/notroot/.docker/
 podman run -v ~/.docker/config.json:/home/notroot/.docker/config.json:ro -it quay.io/jstuart/build-trusted-artifacts use "$(cat result)=/var/tmp"
 ```
 
+## Running the acceptance tests
+
+A container runtime is required to run the acceptance tests. Either
+[Docker](https://docs.docker.com/engine/install/) or
+[Podman](https://podman.io/docs/installation) can be used.
+
+Run the tests with:
+
+```shell
+make test
+```
+
+### Podman rootless setup
+
+When using Podman in rootless mode, enable the Podman socket and set the
+`DOCKER_HOST` environment variable so the Docker client library can communicate
+with Podman:
+
+```shell
+systemctl --user enable --now podman.socket
+export DOCKER_HOST=unix:///run/user/$UID/podman/podman.sock
+```
+
+To persist `DOCKER_HOST` across sessions, add the export to your shell profile:
+
+```shell
+echo 'export DOCKER_HOST=unix:///run/user/$UID/podman/podman.sock' >> ~/.bash_profile
+```
+
 ## Options
 
 * Set `AUTHFILE` to point to an alternative location for `$HOME/.docker/config.json`.

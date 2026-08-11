@@ -25,6 +25,7 @@ import (
 )
 
 var containerClient *client.Client
+var usePodmanUserns bool
 
 type contextKey string
 
@@ -46,6 +47,24 @@ func init() {
 	if err != nil {
 		panic(fmt.Sprintf("creating new client: %s", err))
 	}
+
+	ctx := context.Background()
+	version, err := containerClient.ServerVersion(ctx)
+	if err == nil {
+		for _, component := range version.Components {
+			if strings.Contains(strings.ToLower(component.Name), "podman") {
+				usePodmanUserns = true
+				break
+			}
+		}
+	}
+}
+
+func usernsMode() container.UsernsMode {
+	if usePodmanUserns {
+		return "keep-id"
+	}
+	return ""
 }
 
 func runRegistry(ctx context.Context, binds []string, certs, key string) (string, error) {
@@ -105,6 +124,7 @@ func runRegistry(ctx context.Context, binds []string, certs, key string) (string
 			NetworkMode:  container.NetworkMode(networkName),
 			SecurityOpt:  []string{"label:disable"},
 			Privileged:   true,
+			UsernsMode:   usernsMode(),
 		},
 		&network.NetworkingConfig{
 			EndpointsConfig: map[string]*network.EndpointSettings{},
@@ -201,6 +221,7 @@ func runContainer(ctx context.Context, cmd, binds []string, cert string) (contex
 		&container.HostConfig{
 			Binds:       binds,
 			NetworkMode: container.NetworkMode(networkName),
+			UsernsMode:  usernsMode(),
 		},
 		&network.NetworkingConfig{},
 		&ocispec.Platform{},
