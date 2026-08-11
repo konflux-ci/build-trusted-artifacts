@@ -20,8 +20,6 @@ github.com/cucumber/gherkin/go/v42 v42.0.0 h1:Ulh3E2awUUSSja+wonP/IOQ+ycmiZwZbgm
 github.com/cucumber/gherkin/go/v42 v42.0.0/go.mod h1:CsaumaO2dR9XvBc6ZyiGLMhWCKtTRDxgoxqJigSjSSg=
 github.com/cucumber/godog v0.16.0 h1:ezQbgItuWqZrjPUQwLJ3muwIlvzXBOfZso5QZfG7efE=
 github.com/cucumber/godog v0.16.0/go.mod h1:EDUX9yCqANK+GpbftMDeu61sUDtdLuo1JJgXD2n3bbM=
-github.com/cucumber/messages/go/v21 v21.0.1 h1:wzA0LxwjlWQYZd32VTlAVDTkW6inOFmSM+RuOwHZiMI=
-github.com/cucumber/messages/go/v21 v21.0.1/go.mod h1:zheH/2HS9JLVFukdrsPWoPdmUtmYQAQPLk7w5vWsk5s=
 github.com/cucumber/messages/go/v34 v34.2.0 h1:VCbcNOMz+f8ccjjOOx1NLBNhwvE7/X49Atc8klJa+i8=
 github.com/cucumber/messages/go/v34 v34.2.0/go.mod h1:LYUPjqlTS1kS0pdkdf6sS5uirnjwiIzEGyXPezXNhL8=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
@@ -45,8 +43,6 @@ github.com/go-logr/logr v1.4.4 h1:tG4xh9yMsRCAiodLVTxyrkzSZ9+o0L1Kg/+cPVcbP/8=
 github.com/go-logr/logr v1.4.4/go.mod h1:9T104GzyrTigFIr8wt5mBrctHMim0Nb2HLGrmQ40KvY=
 github.com/go-logr/stdr v1.2.2 h1:hSWxHoqTgW2S2qGc0LTAI563KZ5YKYRhT3MFKZMbjag=
 github.com/go-logr/stdr v1.2.2/go.mod h1:mMo/vtBO5dYbehREoey6XUKy/eSumjCCveDpRre4VKE=
-github.com/gofrs/uuid v4.4.0+incompatible h1:3qXRTX8/NbyulANqlc0lchS1gqAVxRgsuW1YrTJupqA=
-github.com/gofrs/uuid v4.4.0+incompatible/go.mod h1:b2aQJv3Z4Fp6yNu3cdSllBxTCLRxnplIgP/c0N/04lM=
 github.com/google/go-cmp v0.7.0 h1:wk8382ETsv4JYUZwIsn6YpYiWiBsYLSJiTsyBybVuN8=
 github.com/google/go-cmp v0.7.0/go.mod h1:pXiqmnSA92OHEEa9HXL2W4E7lf9JzCmGVUdgjX3N/iU=
 github.com/google/go-containerregistry v0.21.7 h1:/vPFuVXDjtFREsVArW+0h1CIl5urnOhzei4X2DMW9IU=
