@@ -4,7 +4,7 @@ go 1.25.6
 
 require (
 	github.com/cucumber/godog v0.16.0
-	github.com/cucumber/messages/go/v34 v34.2.0
+	github.com/cucumber/messages/go/v34 v34.2.1
 	github.com/docker/docker v28.5.2+incompatible
 	github.com/docker/go-connections v0.7.0
 	github.com/google/go-cmp v0.7.0
