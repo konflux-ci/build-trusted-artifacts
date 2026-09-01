@@ -40,6 +40,46 @@ Describe 'fetch-extra-artifacts.sh helpers'
         When call is_image_index "application/vnd.oci.image.manifest.v1+json"
         The status should be failure
     End
+
+    It 'detects docker manifest lists as indexes'
+        When call is_image_index "application/vnd.docker.distribution.manifest.list.v2+json"
+        The status should be success
+    End
+
+    It 'detects docker container configs'
+        When call is_container_image_config "application/vnd.docker.container.image.v1+json"
+        The status should be success
+    End
+End
+
+Describe 'path_allowed'
+    gnu_realpath_missing() {
+        ! realpath -m / >/dev/null 2>&1
+    }
+    Skip if "GNU realpath -m is required" gnu_realpath_missing
+
+    setup() {
+        SOURCE_ROOT="$(mktemp -d)/source"
+        mkdir -p "${SOURCE_ROOT}"
+    }
+
+    cleanup() {
+        rm -rf "$(dirname "${SOURCE_ROOT}")"
+    }
+
+    Before 'setup'
+    After 'cleanup'
+
+    It 'accepts a path under the source root'
+        When call path_allowed "models/config.json"
+        The output should eq "${SOURCE_ROOT}/models/config.json"
+    End
+
+    It 'rejects path traversal outside the source root'
+        When call path_allowed "../etc/passwd"
+        The status should be failure
+        The error should include "Skipping path outside source root"
+    End
 End
 
 Describe 'resolve_index_child_digest'
@@ -119,6 +159,12 @@ Describe 'FETCH_EXTRA_ARTIFACTS default-off'
         The status should be success
         The output should eq ""
     End
+
+    It 'exits 0 when image-url is missing'
+        When run command env FETCH_EXTRA_ARTIFACTS=true IMAGE_URL= IMAGE_DIGEST=sha256:x ./fetch-extra-artifacts.sh
+        The status should be success
+        The output should include "image-url/image-digest missing"
+    End
 End
 
 Describe 'mocked oras titled-layer extract'
@@ -141,25 +187,29 @@ Describe 'mocked oras titled-layer extract'
         cat >"${fake_bin}/oras" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
+ref=""
+out=""
+for arg in "$@"; do
+  [[ "$arg" == *@sha256:* ]] && ref="$arg"
+done
+digest="${ref##*@}"
 if [[ "${1:-}" == "manifest" && "${2:-}" == "fetch" ]]; then
-  cat "${MOCK_MANIFEST}"
+  if [[ -n "${digest}" && -f "${MOCK_BLOB_DIR}/manifest-${digest}" ]]; then
+    cat "${MOCK_BLOB_DIR}/manifest-${digest}"
+  else
+    cat "${MOCK_MANIFEST}"
+  fi
   exit 0
 fi
 if [[ "${1:-}" == "blob" && "${2:-}" == "fetch" ]]; then
-  out=""
-  ref=""
   while [[ $# -gt 0 ]]; do
     if [[ "$1" == "--output" ]]; then
       out="$2"
       shift 2
       continue
     fi
-    if [[ "$1" == *@sha256:* ]]; then
-      ref="$1"
-    fi
     shift
   done
-  digest="${ref##*@}"
   cp "${MOCK_BLOB_DIR}/${digest}" "${out}"
   exit 0
 fi
@@ -210,14 +260,14 @@ EOF
         export PATH="${fake_bin}:${PATH}"
         export MOCK_MANIFEST="${mock_manifest}"
         export MOCK_BLOB_DIR="${blob_dir}"
-        export ORAS_OPTS_FILE="/no-such-oras-opts"
+        export ORAS_OPTS_FILE="${PWD}/oras_opts.sh"
         export SELECT_OCI_AUTH="${fake_bin}/select-oci-auth.sh"
         export SOURCE_ROOT="${source_root}"
         export MANIFEST_FILE="${manifest_file}"
         export FETCH_EXTRA_ARTIFACTS="true"
         export EXTRA_ARTIFACT_FILTER="${MODEL_FILTER}"
         export IMAGE_URL="fake.example/modelcar"
-        export IMAGE_DIGEST="sha256:index"
+        export IMAGE_DIGEST="sha256:image"
     }
 
     cleanup() {
@@ -234,5 +284,111 @@ EOF
         The file "${source_root}/models/config.json" should be exist
         The file "${source_root}/model.safetensors" should not be exist
         The contents of file "${source_root}/models/config.json" should include '{"ok":true}'
+    End
+
+    Describe 'no matching layers'
+        extra_setup() {
+            cat >"${MOCK_MANIFEST}" <<'EOF'
+{
+  "mediaType": "application/vnd.oci.image.manifest.v1+json",
+  "config": {"mediaType": "application/vnd.oci.image.config.v1+json"},
+  "layers": [
+    {
+      "digest": "sha256:weights",
+      "mediaType": "application/vnd.oci.image.layer.v1.tar",
+      "annotations": {"org.opencontainers.image.title": "model.safetensors"}
+    }
+  ]
+}
+EOF
+        }
+        Before 'extra_setup'
+
+        It 'reports when no titled layers match the filter'
+            When run script ./fetch-extra-artifacts.sh
+            The status should be success
+            The output should include "No files matched EXTRA_ARTIFACT_FILTER"
+            The file "${source_root}/model.safetensors" should not be exist
+        End
+    End
+
+    Describe 'image index'
+        extra_setup() {
+            cat >"${MOCK_BLOB_DIR}/manifest-sha256:index" <<'EOF'
+{
+  "mediaType": "application/vnd.oci.image.index.v1+json",
+  "manifests": [
+    {"digest": "sha256:arm", "platform": {"architecture": "arm64", "os": "linux"}},
+    {"digest": "sha256:image", "platform": {"architecture": "amd64", "os": "linux"}}
+  ]
+}
+EOF
+            cp "${MOCK_MANIFEST}" "${MOCK_BLOB_DIR}/manifest-sha256:image"
+            export IMAGE_DIGEST="sha256:index"
+        }
+        Before 'extra_setup'
+
+        It 'resolves a multi-arch index then extracts titled layers'
+            When run script ./fetch-extra-artifacts.sh
+            The status should be success
+            The output should include "Resolving image index to sha256:image"
+            The output should include "Extracted models/config.json"
+            The file "${source_root}/models/config.json" should be exist
+        End
+    End
+
+    Describe 'empty image index'
+        extra_setup() {
+            cat >"${MOCK_MANIFEST}" <<'EOF'
+{
+  "mediaType": "application/vnd.oci.image.index.v1+json",
+  "manifests": []
+}
+EOF
+        }
+        Before 'extra_setup'
+
+        It 'fails when an image index has no manifests'
+            When run script ./fetch-extra-artifacts.sh
+            The status should be failure
+            The output should include "image index has no manifests to resolve"
+        End
+    End
+
+    Describe 'oci artifact blobs'
+        extra_setup() {
+            printf '#!/bin/sh\necho hi\n' >"${MOCK_BLOB_DIR}/sha256:script"
+            cat >"${MOCK_MANIFEST}" <<'EOF'
+{
+  "mediaType": "application/vnd.oci.image.manifest.v1+json",
+  "config": {"mediaType": "application/vnd.oci.empty.v1+json"},
+  "layers": [
+    {
+      "digest": "sha256:script",
+      "annotations": {"org.opencontainers.image.title": "run.sh"}
+    },
+    {
+      "digest": "sha256:weights",
+      "annotations": {"org.opencontainers.image.title": "model.safetensors"}
+    },
+    {
+      "digest": "sha256:escape",
+      "annotations": {"org.opencontainers.image.title": "../evil.sh"}
+    }
+  ]
+}
+EOF
+        }
+        Before 'extra_setup'
+
+        It 'fetches matching blobs and skips traversal and non-matching titles'
+            When run script ./fetch-extra-artifacts.sh
+            The status should be success
+            The output should include "Fetching blob sha256:script -> run.sh"
+            The error should include "Skipping path outside source root"
+            The file "${source_root}/run.sh" should be exist
+            The file "${source_root}/model.safetensors" should not be exist
+            The contents of file "${source_root}/run.sh" should include "echo hi"
+        End
     End
 End
