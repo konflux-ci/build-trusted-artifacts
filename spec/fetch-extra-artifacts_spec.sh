@@ -26,6 +26,11 @@ Describe 'fetch-extra-artifacts.sh helpers'
         The status should be failure
     End
 
+    It 'matches on title when the in-layer path does not'
+        When call matches_filter "model.safetensors" "config.json" "${MODEL_FILTER}"
+        The status should be success
+    End
+
     It 'detects oci image config'
         When call is_container_image_config "application/vnd.oci.image.config.v1+json"
         The status should be success
@@ -162,6 +167,12 @@ Describe 'FETCH_EXTRA_ARTIFACTS default-off'
 
     It 'exits 0 when image-url is missing'
         When run command env FETCH_EXTRA_ARTIFACTS=true IMAGE_URL= IMAGE_DIGEST=sha256:x ./fetch-extra-artifacts.sh
+        The status should be success
+        The output should include "image-url/image-digest missing"
+    End
+
+    It 'exits 0 when image-digest is missing'
+        When run command env FETCH_EXTRA_ARTIFACTS=true IMAGE_URL=fake.example/img IMAGE_DIGEST= ./fetch-extra-artifacts.sh
         The status should be success
         The output should include "image-url/image-digest missing"
     End
@@ -355,6 +366,56 @@ EOF
         End
     End
 
+    Describe 'gzip titled layer without inlayerpath'
+        extra_setup() {
+            tar -czf "${MOCK_BLOB_DIR}/sha256:gz" -C "${workdir}/layer" models/config.json
+            cat >"${MOCK_MANIFEST}" <<'EOF'
+{
+  "mediaType": "application/vnd.oci.image.manifest.v1+json",
+  "config": {"mediaType": "application/vnd.docker.container.image.v1+json"},
+  "layers": [
+    {
+      "digest": "sha256:gz",
+      "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+      "annotations": {"org.opencontainers.image.title": "config.json"}
+    }
+  ]
+}
+EOF
+        }
+        Before 'extra_setup'
+
+        It 'extracts a gzip layer matching on title only'
+            When run script ./fetch-extra-artifacts.sh
+            The status should be success
+            The output should include "Extracted models/config.json"
+            The file "${source_root}/models/config.json" should be exist
+        End
+    End
+
+    Describe 'docker manifest list'
+        extra_setup() {
+            cat >"${MOCK_BLOB_DIR}/manifest-sha256:index" <<'EOF'
+{
+  "mediaType": "application/vnd.docker.distribution.manifest.list.v2+json",
+  "manifests": [
+    {"digest": "sha256:image", "platform": {"architecture": "arm64", "os": "linux"}}
+  ]
+}
+EOF
+            cp "${MOCK_MANIFEST}" "${MOCK_BLOB_DIR}/manifest-sha256:image"
+            export IMAGE_DIGEST="sha256:index"
+        }
+        Before 'extra_setup'
+
+        It 'resolves a docker index via the first linux digest'
+            When run script ./fetch-extra-artifacts.sh
+            The status should be success
+            The output should include "Resolving image index to sha256:image"
+            The file "${source_root}/models/config.json" should be exist
+        End
+    End
+
     Describe 'oci artifact blobs'
         extra_setup() {
             printf '#!/bin/sh\necho hi\n' >"${MOCK_BLOB_DIR}/sha256:script"
@@ -366,6 +427,10 @@ EOF
     {
       "digest": "sha256:script",
       "annotations": {"org.opencontainers.image.title": "run.sh"}
+    },
+    {
+      "digest": "sha256:untitled",
+      "annotations": {}
     },
     {
       "digest": "sha256:weights",
