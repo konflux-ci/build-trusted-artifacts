@@ -4,6 +4,7 @@ COPY create-oci.sh /usr/local/bin/create-archive
 COPY select-oci-auth.sh /usr/local/bin/select-oci-auth.sh
 COPY use-oci.sh /usr/local/bin/use-archive
 COPY oras_opts.sh /usr/local/bin/oras_opts.sh
+COPY fetch-extra-artifacts.sh /usr/local/bin/fetch-extra-artifacts.sh
 COPY entrypoint.sh /usr/local/bin/entrypoint
 COPY LICENSE /licenses/LICENSE
 

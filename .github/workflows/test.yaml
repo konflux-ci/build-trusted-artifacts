@@ -36,7 +36,7 @@ jobs:
         working-directory: acceptance
 
     - name: Run ShellCheck
-      run: shellcheck create-oci.sh use-oci.sh select-oci-auth.sh oras_opts.sh entrypoint.sh hack/demo.sh
+      run: shellcheck create-oci.sh use-oci.sh select-oci-auth.sh oras_opts.sh fetch-extra-artifacts.sh entrypoint.sh hack/demo.sh
 
   test:
     runs-on: ubuntu-latest

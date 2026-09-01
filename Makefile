@@ -1,6 +1,6 @@
 .PHONY: lint
 lint:
-	@shellcheck create-oci.sh use-oci.sh select-oci-auth.sh oras_opts.sh entrypoint.sh hack/demo.sh
+	@shellcheck create-oci.sh use-oci.sh select-oci-auth.sh oras_opts.sh fetch-extra-artifacts.sh entrypoint.sh hack/demo.sh
 	@cd acceptance && golangci-lint run ./...
 
 .PHONY: test
