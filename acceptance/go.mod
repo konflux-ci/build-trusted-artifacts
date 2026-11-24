@@ -4,7 +4,7 @@ go 1.26.0
 
 require (
 	github.com/cucumber/godog v0.16.0
-	github.com/cucumber/messages/go/v34 v34.2.1
+	github.com/cucumber/messages/go/v35 v35.0.0
 	github.com/docker/docker v28.5.2+incompatible
 	github.com/docker/go-connections v0.8.2
 	github.com/google/go-cmp v0.7.0
@@ -21,6 +21,7 @@ require (
 	github.com/containerd/errdefs/pkg v0.3.0 // indirect
 	github.com/containerd/log v0.2.0 // indirect
 	github.com/cucumber/gherkin/go/v42 v42.0.1 // indirect
+	github.com/cucumber/messages/go/v34 v34.2.0 // indirect
 	github.com/distribution/reference v0.6.0 // indirect
 	github.com/docker/cli v29.9.2+incompatible // indirect
 	github.com/docker/docker-credential-helpers v0.9.12 // indirect
